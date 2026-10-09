@@ -19,11 +19,12 @@ export function seedDemo(){
   const fin=new Date(now.getFullYear(),now.getMonth()+6,1);
   const viaje={id:uid8(),nombre:'Vacaciones',objetivo:0,ahorrado:3500,fecha:ymd(fin),desglose:[{n:'Hospedaje',m:6000},{n:'Transporte',m:5500},{n:'Comidas y paseos',m:3500}]};
   c.metas=[fondo,viaje];
-  const fx=(nombre,monto,tipo,medio,cat,v,cada)=>({id:uid8(),nombre:nombre,monto:monto,tipo:tipo,medio:medio,cat:cat,variable:!!v,cada:cada||1,desde:cada>1?ym:'',vals:{}});
+  const fx=(nombre,monto,tipo,medio,cat,v,cada,q)=>({id:uid8(),nombre:nombre,monto:monto,tipo:tipo,medio:medio,cat:cat,variable:!!v,cada:cada||1,q:q||0,desde:cada>1?ym:'',vals:{}});
   c.fijos=[
-    fx('Luz',900,'fijo',azul.id,'Servicios',true),fx('Agua',480,'fijo','efectivo','Servicios',true,2),
-    fx('Internet',499,'fijo',azul.id,'Servicios'),fx('Celular',399,'fijo',azul.id,'Servicios'),
-    fx('Gasolina',1200,'fijo',azul.id,'Gasolina',true),fx('Gimnasio',450,'fijo','efectivo','Salud'),
+    fx('Luz',900,'fijo',azul.id,'Servicios',true,1,2),fx('Agua',480,'fijo','efectivo','Servicios',true,2,2),
+    fx('Internet',499,'fijo',azul.id,'Servicios',false,1,1),fx('Celular',399,'fijo',azul.id,'Servicios',false,1,2),
+    fx('Gasolina',1200,'fijo',azul.id,'Gasolina',true),fx('Gimnasio',450,'fijo','efectivo','Salud',false,1,1),
+    Object.assign(fx('Limpieza del hogar',350,'fijo','efectivo','Hogar'),{porQ:true}),
     fx('Netflix',219,'sub',azul.id,'Servicios'),fx('Spotify',129,'sub',azul.id,'Servicios'),fx('iCloud',49,'sub',azul.id,'Servicios')
   ];
   const al=(nombre,kind,monto,extra)=>Object.assign({id:uid8(),nombre:nombre,kind:kind,monto:monto,pct:0,ref:'',cat:''},extra||{});

@@ -1,9 +1,9 @@
 // Acciones de los botones (data-act), cambios de campos y eventos globales.
-import { $, ic, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean, privacy, setHidden } from './util.js';
+import { $, ic, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean, privacy, setHidden, sum, money } from './util.js';
 import { S, dirty, typing, blankConfig, saveLocal, schedulePersist, touchCfg, touchMonth, rt, cloudAdapter, setMeta } from './state.js';
 import { cloud, syncNow, signOutAndClear } from './cloud.js';
 import { authForm } from './auth.js';
-import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc } from './logic.js';
+import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc, fijosQ, esDirecto } from './logic.js';
 import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet } from './ui.js';
 import { render } from './render.js';
 import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm, msiForm } from './forms.js';
@@ -82,13 +82,29 @@ export const ACT={
   'add-meta'(){metaForm(null)},'edit-meta'(el){metaForm(el.dataset.id)},'meta-add'(el){metaAport(el.dataset.id)},
   'add-msi'(el){if(!S.config.tarjetas.length){toast('Primero agrega una tarjeta');return}msiForm(null,el.dataset.id)},
   'edit-msi'(el){msiForm(el.dataset.id)},
-  'add-fijo'(){fijoForm(null)},'edit-fijo'(el){fijoForm(el.dataset.id)},
+  'add-fijo'(){fijoForm(null)},'edit-fijo'(el){if(el.dataset.ym)ui.fym=el.dataset.ym;fijoForm(el.dataset.id)},
   'f-prev'(){ui.fym=addMonths(ui.fym,-1);render()},'f-next'(){ui.fym=addMonths(ui.fym,1);render()},
   'add-extra'(){const b=qBounds(ui.ym,ui.q),t=ymd(new Date());txForm(null,null,{tipo:'ingreso',f:(t>=b[0]&&t<=b[1])?t:b[0]})},
   'fijo-mes'(el,e){
     e.stopPropagation();const f=S.config.fijos.find(x=>x.id===el.dataset.id);if(!f)return;
-    openForm({title:f.nombre+' en '+MESES[parseYM(ui.fym).m-1],note:'Escribe lo que realmente pagaste este mes. Déjalo vacío para volver al monto estimado.',values:{monto:(f.vals&&f.vals[ui.fym]!=null)?f.vals[ui.fym]:''},fields:[{k:'monto',label:'Monto real',type:'number',raw:true}],
+    const mes=MESES[parseYM(ui.fym).m-1];
+    if(f.porQ){
+      const k1=ui.fym+'-1',k2=ui.fym+'-2',g=k=>(f.vals&&f.vals[k]!=null)?f.vals[k]:'';
+      openForm({title:f.nombre+' en '+mes,note:'Escribe lo que realmente pagaste en cada quincena. Déjalo vacío para usar el monto estimado.',values:{q1:g(k1),q2:g(k2)},
+        fields:[{k:'q1',label:'1ª quincena (días 1 al 15)',type:'number',raw:true},{k:'q2',label:'2ª quincena (días 16 al fin de mes)',type:'number',raw:true}],
+        onSubmit:o=>{f.vals=f.vals||{};[[k1,o.q1],[k2,o.q2]].forEach(pr=>{if(String(pr[1]==null?'':pr[1]).trim()==='')delete f.vals[pr[0]];else f.vals[pr[0]]=num(pr[1])});touchCfg();render()}});
+      return;
+    }
+    openForm({title:f.nombre+' en '+mes,note:'Escribe lo que realmente pagaste este mes. Déjalo vacío para volver al monto estimado.',values:{monto:(f.vals&&f.vals[ui.fym]!=null)?f.vals[ui.fym]:''},fields:[{k:'monto',label:'Monto real',type:'number',raw:true}],
       onSubmit:o=>{f.vals=f.vals||{};if(String(o.monto==null?'':o.monto).trim()==='')delete f.vals[ui.fym];else f.vals[ui.fym]=num(o.monto);touchCfg();render()}});
+  },
+  // Aparta en un sobre lo que toca pagar directo (efectivo o débito) de los gastos fijos de la quincena
+  'fijos-sobre'(){
+    const total=round2(sum(fijosQ(ui.ym,ui.q).filter(x=>esDirecto(x.f)),x=>x.m));
+    if(!(total>0))return;
+    const q=getQ(ui.ym,ui.q);let a=q.allocs.find(x=>x.auto==='fijos');
+    if(a)a.monto=total;else q.allocs.push({id:uid8(),nombre:'Gastos fijos de la quincena',kind:'pago',monto:total,pct:0,ref:'',cat:'',done:false,auto:'fijos'});
+    touchMonth(ui.ym);render();toast('Listo: apartaste '+money(total)+' para tus gastos fijos');
   },
   close(){closeSheet()},
   'sheet-submit'(){if(sheet.cur&&!sheet.cur.busy)submitSheet()},

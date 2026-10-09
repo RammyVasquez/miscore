@@ -78,6 +78,7 @@ El ojo de la barra superior (o tocar el monto grande) **oculta todos los montos*
 ## Sobres y compras a meses
 
 - **Sobre:** una parte de tu sueldo con un destino (renta, tarjeta, ahorro, comida…). Lo que no metes en ningún sobre es tu dinero libre. Hay sobres de *pago* (se marcan con la palomita) y sobres con *tope* de gasto. La app lo explica en **Quincena > ¿Qué es un sobre?**
+- **Gastos fijos por quincena:** en **Fijos > Agregar gasto**, en "¿Cada cuánto se paga?" elige **Cada quincena** (lo que pagas dos veces al mes, como el pago de la persona que te ayuda en casa) o, si es mensual, elige **en qué quincena cae** (la renta del día 1, el internet del día 20…). En **Quincena** aparece "Gastos fijos de esta quincena" con lo que toca pagar ahora, separando lo que pagas directo de lo que va a tarjeta, y un botón para apartar ese total en un sobre.
 - **Compras a meses:** en **Tarjetas > Compra a meses** registras lo que pagas en mensualidades (monto total, número de meses y en qué mensualidad vas este mes). La app avanza sola cada mes, te dice cuántas faltan, cuánto falta por pagar y cuándo termina, y lo suma como "a meses" en el próximo pago de la tarjeta, en el sobre de esa tarjeta y en el panorama. Se cuentan aparte del saldo de la tarjeta para no sumarlas dos veces: en el saldo pon lo que debes pagar ahora.
 
 ## Primer uso

@@ -45,8 +45,24 @@ export function catTotals(ym){
   return Object.entries(m).sort((a,b)=>b[1]-a[1]);
 }
 export function cardInfo(c){const nc=nextOcc(+c.corte||1),nl=nextOcc(+c.limite||1);return {nc,nl,dc:daysTo(nc),dl:daysTo(nl)}}
-export function fijoDue(f,ym){const c=Math.max(1,+f.cada||1);if(c===1)return true;const base=f.desde||ymOf(new Date());return (((monthIdx(ym)-monthIdx(base))%c)+c)%c===0}
-export function fijoMonto(f,ym){if(!fijoDue(f,ym))return 0;const v=f.vals&&f.vals[ym];return (v!=null&&v!=='')?(+v||0):(+f.monto||0)}
+export function fijoDue(f,ym){if(f.porQ)return true;const c=Math.max(1,+f.cada||1);if(c===1)return true;const base=f.desde||ymOf(new Date());return (((monthIdx(ym)-monthIdx(base))%c)+c)%c===0}
+// Lo que toca pagar de un gasto en una quincena concreta (n = 1 o 2).
+// Un gasto "cada quincena" toca en las dos; uno mensual toca solo en la quincena que se le asignó.
+export function fijoMontoQ(f,ym,n){
+  if(f.porQ){const v=f.vals&&f.vals[ym+'-'+n];return (v!=null&&v!=='')?(+v||0):(+f.monto||0)}
+  if(+f.q!==n)return 0;
+  return fijoMonto(f,ym);
+}
+// Total del mes (un gasto "cada quincena" suma sus dos quincenas)
+export function fijoMonto(f,ym){
+  if(f.porQ)return round2(fijoMontoQ(f,ym,1)+fijoMontoQ(f,ym,2));
+  if(!fijoDue(f,ym))return 0;
+  const v=f.vals&&f.vals[ym];return (v!=null&&v!=='')?(+v||0):(+f.monto||0)
+}
+export const esDirecto=f=>!f.medio||f.medio==='efectivo';
+export const fijosQ=(ym,n)=>S.config.fijos.map(f=>({f:f,m:fijoMontoQ(f,ym,n)})).filter(x=>x.m>0);
+// Gastos del mes que pagas directo y todavía no tienen quincena asignada
+export const fijosSinQ=ym=>S.config.fijos.filter(f=>!f.porQ&&!(+f.q>0)&&esDirecto(f)&&fijoDue(f,ym)&&fijoMonto(f,ym)>0);
 export const metaObj=m=>(m.desglose&&m.desglose.length)?sum(m.desglose,d=>+d.m||0):(+m.objetivo||0);
 export function revertAlloc(a){
   if(!a.done)return;

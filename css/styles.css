@@ -297,3 +297,5 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9em;background
 .what[open] summary::after{content:" ▴"}
 .what p{margin:6px 0 0;line-height:1.45}
 .what b{color:var(--ink)}
+
+.fq-sec{font-size:13px;font-weight:700;color:var(--mut);margin:12px 0 2px}
