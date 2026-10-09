@@ -1,6 +1,6 @@
 # miscore
 
-App web para llevar tus finanzas por quincena: sobres (diezmo, tarjetas, renta, ahorro), ingresos extra, gastos, tarjetas con fechas de corte y pago, metas de ahorro, gastos fijos (incluidos los que cambian cada mes) y reportes.
+App web para llevar tus finanzas por quincena: apartados (diezmo, tarjetas, renta, ahorro), ingresos extra, gastos, tarjetas con fechas de corte y pago, metas de ahorro, gastos fijos (incluidos los que cambian cada mes) y reportes.
 
 Es HTML, CSS y JavaScript con módulos nativos (ES modules). **No hay build ni dependencias.**
 
@@ -19,7 +19,7 @@ miscore/
   js/
     main.js             arranque: conecta módulos y dibuja la app
     state.js            estado y guardado local
-    logic.js            reglas: quincenas, sobres, tarjetas, fijos
+    logic.js            reglas: quincenas, apartados, tarjetas, fijos
     util.js             formato de dinero y fechas, iconos
     config.js           llaves de Supabase (tú las pegas aquí)
     cloud.js            sincronización con Supabase: sesión, subida y cambios en vivo
@@ -41,7 +41,7 @@ Dónde tocar según lo que quieras cambiar:
 
 | Quiero cambiar… | Archivo |
 | --- | --- |
-| Cómo se calcula el Libre, los sobres o las tarjetas | `js/logic.js` |
+| Cómo se calcula el Libre, los apartados o las tarjetas | `js/logic.js` |
 | Una pantalla (diseño o textos) | `js/views/<pantalla>.js` |
 | Campos de un formulario | `js/forms.js` |
 | Qué hace un botón | `js/actions.js` |
@@ -75,11 +75,15 @@ El **Resumen** responde en este orden: cuánto te queda libre (con su explicaci�
 
 El ojo de la barra superior (o tocar el monto grande) **oculta todos los montos** de la app para cuando la usas frente a otras personas. Se recuerda en ese dispositivo.
 
-## Sobres y compras a meses
+## Apartados y compras a meses
 
-- **Sobre:** una parte de tu sueldo con un destino (renta, tarjeta, ahorro, comida…). Lo que no metes en ningún sobre es tu dinero libre. Hay sobres de *pago* (se marcan con la palomita) y sobres con *tope* de gasto. La app lo explica en **Quincena > ¿Qué es un sobre?**
-- **Gastos fijos por quincena:** en **Fijos > Agregar gasto**, en "¿Cada cuánto se paga?" elige **Cada quincena** (lo que pagas dos veces al mes, como el pago de la persona que te ayuda en casa) o, si es mensual, elige **en qué quincena cae** (la renta del día 1, el internet del día 20…). En **Quincena** aparece "Gastos fijos de esta quincena" con lo que toca pagar ahora, separando lo que pagas directo de lo que va a tarjeta, y un botón para apartar ese total en un sobre.
-- **Compras a meses:** en **Tarjetas > Compra a meses** registras lo que pagas en mensualidades (monto total, número de meses y en qué mensualidad vas este mes). La app avanza sola cada mes, te dice cuántas faltan, cuánto falta por pagar y cuándo termina, y lo suma como "a meses" en el próximo pago de la tarjeta, en el sobre de esa tarjeta y en el panorama. Se cuentan aparte del saldo de la tarjeta para no sumarlas dos veces: en el saldo pon lo que debes pagar ahora.
+- **Apartado:** una parte de tu sueldo con un destino (renta, tarjeta, ahorro, comida…). Lo que no metes en ningún apartado es tu dinero libre. Hay apartados de *pago* (se marcan con la palomita) y apartados con *tope* de gasto. La app lo explica en **Quincena > ¿Qué es un apartado?**
+- **Gastos fijos por quincena:** en **Fijos > Agregar gasto**, en "¿Cada cuánto se paga?" elige **Cada quincena** (lo que pagas dos veces al mes, como el pago de la persona que te ayuda en casa) o, si es mensual, elige **en qué quincena cae** (la renta del día 1, el internet del día 20…). En **Quincena** aparece "Gastos fijos de esta quincena" con lo que toca pagar ahora, separando lo que pagas directo de lo que va a tarjeta, y un botón para apartar ese total en un apartado.
+- **Ingresos que se repiten (un bono mensual):** en **Quincena > Ingresos extra > Agregar**, elige "¿Se repite? Sí, cada mes" (o cada quincena) y en qué quincena lo recibes. Se suma solo cada mes, entra al cálculo del diezmo y a los reportes. Para cambiarlo o quitarlo toca el ingreso en Quincena o en Ajustes; ahí puedes poner el monto de un mes en particular (0 si ese mes no llega).
+- **Vales (despensa, gasolina):** pestaña **Vales** (en Más). No son sueldo ni cambian tu dinero libre. Pones tu saldo y, si los recargan cada mes, cuánto y qué día; la app suma las recargas sola. Al registrar un gasto elige "Se pagó con" tus vales: baja el saldo del vale y no gasta tus topes de efectivo.
+- **Tarjetas con dos montos:** *pago para no generar intereses* (lo que dice tu estado de cuenta; es el que se descuenta al marcar el apartado de pago y el que avisa la fecha límite) y *saldo total* (opcional; la diferencia se muestra como "por vencer"). Los cargos nuevos suben lo "por vencer", no el pago de ahora. Cada tarjeta muestra cuánto falta apartar y un **próximo pago estimado** (mensualidades a meses + cargos fijos de esa tarjeta, sin compras nuevas).
+- **Gastos fijos que ya son apartados:** si un gasto fijo tiene el mismo nombre que un apartado de la quincena, no se cuenta dos veces.
+- **Compras a meses:** en **Tarjetas > Compra a meses** registras lo que pagas en mensualidades (monto total, número de meses y en qué mensualidad vas este mes). La app avanza sola cada mes, te dice cuántas faltan, cuánto falta por pagar y cuándo termina, y lo suma como "a meses" en el próximo pago de la tarjeta, en el apartado de esa tarjeta y en el panorama. Se cuentan aparte del saldo de la tarjeta para no sumarlas dos veces: en el saldo pon lo que debes pagar ahora.
 
 ## Primer uso
 

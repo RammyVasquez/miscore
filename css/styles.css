@@ -299,3 +299,7 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9em;background
 .what b{color:var(--ink)}
 
 .fq-sec{font-size:13px;font-weight:700;color:var(--mut);margin:12px 0 2px}
+
+.est{margin-top:10px;background:var(--surf2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:14.5px}
+.est .sb{margin-top:2px}
+.card-row .head>div:last-child{max-width:58%}

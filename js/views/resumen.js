@@ -1,7 +1,7 @@
 // Pantalla: resumen (tablero principal).
 import { esc, money, ymOf, MESES, parseYM, inDays, fdate, sum, ic, privacy } from '../util.js';
 import { S } from '../state.js';
-import { qBounds, qSummary, cardInfo, fijoMonto, metaObj, KIND, msiInfo, msiMes } from '../logic.js';
+import { qBounds, qSummary, cardInfo, fijoMonto, metaObj, KIND, msiInfo, msiMes, cardTotal, valeSaldo, valeProx } from '../logic.js';
 import { chipK } from '../components.js';
 import { donut, legend, ring, paceChart } from '../charts.js';
 
@@ -39,34 +39,34 @@ export function vResumen() {
     + '<div class="daybar"><div><i style="width:' + Math.min(100, Math.round(dayIdx / total * 100)) + '%"></i></div><span>Día ' + dayIdx + ' de ' + total + '</span></div>'
     + '<details class="how"><summary>¿Cómo se calcula?</summary><div class="eq">'
     + '<div><span>Ingreso de la quincena</span><b>' + money(s.ingreso) + '</b></div>'
-    + '<div><span>− Sobres (lo que ya apartaste)</span><b>' + money(s.asignado) + '</b></div>'
-    + '<div><span>− Gastos fuera de sobre</span><b>' + money(s.over + s.unb) + '</b></div>'
+    + '<div><span>− Apartados (lo que ya apartaste)</span><b>' + money(s.asignado) + '</b></div>'
+    + '<div><span>− Gastos sin apartado</span><b>' + money(s.over + s.unb) + '</b></div>'
     + '<div class="res"><span>= Libre</span><b>' + money(s.libre) + '</b></div></div>'
-    + '<p>Un sobre es una parte de tu sueldo con un destino: diezmo, renta, tarjetas, ahorro o un tope de gasto.</p></details></section>';
+    + '<p>Un apartado es una parte de tu sueldo con un destino, como los apartados de tu banco: diezmo, renta, tarjetas, ahorro o un tope de gasto.</p></details></section>';
   h += '<div class="quick"><button class="btn ghost sm" data-act="add-extra">Ingreso extra</button><button class="btn ghost sm" data-act="go" data-r="quincena">Ver mi quincena</button></div>';
 
   // ---- Por pagar ----
-  const sobres = q.allocs.filter(a => a.kind !== 'gasto').slice().sort((a, b2) => (a.done ? 1 : 0) - (b2.done ? 1 : 0));
-  const pend = sum(sobres.filter(a => !a.done), a => plan(a.id));
-  const pagar = '<div class="panel"><div class="head"><h2>Por pagar esta quincena</h2>' + (sobres.some(a => !a.done) ? '<span class="amt">' + money(pend) + '</span>' : '') + '</div>'
-    + (sobres.length ? sobres.slice(0, 8).map(a => {
+  const apartados = q.allocs.filter(a => a.kind !== 'gasto').slice().sort((a, b2) => (a.done ? 1 : 0) - (b2.done ? 1 : 0));
+  const pend = sum(apartados.filter(a => !a.done), a => plan(a.id));
+  const pagar = '<div class="panel"><div class="head"><h2>Por pagar esta quincena</h2>' + (apartados.some(a => !a.done) ? '<span class="amt">' + money(pend) + '</span>' : '') + '</div>'
+    + (apartados.length ? apartados.slice(0, 8).map(a => {
       const ref = a.kind === 'tarjeta' ? S.config.tarjetas.find(c => c.id === a.ref) : a.kind === 'meta' ? S.config.metas.find(c => c.id === a.ref) : null;
       return '<div class="row' + (a.done ? ' done' : '') + '" data-act="go" data-r="quincena"><button class="chk" data-act="toggle-alloc" data-id="' + a.id + '" data-ym="' + ym + '" data-q="' + n + '" aria-pressed="' + (!!a.done) + '" aria-label="Marcar ' + esc(a.nombre) + ' como hecho">' + ic('check') + '</button>'
         + '<div class="grow"><div class="nm">' + esc(a.nombre) + '</div><div class="sb">' + KIND[a.kind].l + (ref ? ' · ' + esc(ref.nombre) : '') + '</div></div><div class="amt">' + money(plan(a.id)) + '</div></div>';
-    }).join('') + (sobres.every(a => a.done) ? '<p class="ok-line">Todo al día. Ya marcaste todos tus sobres.</p>' : '')
-      : '<div class="empty">Aún no tienes sobres. Créalos en la pestaña Quincena.</div>') + '</div>';
+    }).join('') + (apartados.every(a => a.done) ? '<p class="ok-line">Todo al día. Ya marcaste todos tus apartados.</p>' : '')
+      : '<div class="empty">Aún no tienes apartados. Créalos en la pestaña Quincena.</div>') + '</div>';
 
   // ---- Reparto de la quincena (dona) ----
   const kinds = [['diezmo', 'Diezmo', 'var(--k-die)'], ['pago', 'Renta y otros pagos', 'var(--k-pag)'], ['tarjeta', 'Pago de tarjetas', 'var(--k-tar)'], ['meta', 'Ahorro y metas', 'var(--k-met)'], ['gasto', 'Gastos con tope', 'var(--k-gas)']];
   const segs = kinds.map(k => ({ label: k[1], color: k[2], value: sum(q.allocs.filter(a => a.kind === k[0]), a => plan(a.id)) }));
-  if (s.over + s.unb > 0) segs.push({ label: 'Gasto fuera de sobre', color: 'var(--bad)', value: s.over + s.unb });
+  if (s.over + s.unb > 0) segs.push({ label: 'Gasto sin apartado', color: 'var(--bad)', value: s.over + s.unb });
   if (s.libre > 0) segs.push({ label: 'Libre', color: 'var(--lib)', value: s.libre });
   const reparto = '<div class="panel"><h2>¿A dónde se va tu quincena?</h2><div class="donutwrap">'
     + donut(segs, { center: money(s.ingreso), sub: 'ingreso', label: 'Reparto de tu ingreso de la quincena' }) + legend(segs) + '</div></div>';
 
   // ---- Ritmo de gasto ----
   let ritmo = '<div class="panel"><h2>Tu gasto día a día</h2>';
-  if (budget <= 0 && !cash.length) ritmo += '<div class="empty">Agrega un sobre con tope (por ejemplo Despensa) y registra tus gastos para ver tu ritmo.</div>';
+  if (budget <= 0 && !cash.length) ritmo += '<div class="empty">Agrega un apartado con tope (por ejemplo Despensa) y registra tus gastos para ver tu ritmo.</div>';
   else {
     const proj = dayIdx > 0 ? spent / dayIdx * total : 0;
     ritmo += '<p class="hint" style="margin-bottom:6px">' + (spent === 0 ? 'Aún no registras gastos en efectivo o débito esta quincena.'
@@ -100,11 +100,13 @@ export function vResumen() {
     }).join('') + '</div>' : '<div class="empty">Crea tu primera meta de ahorro.</div>') + '</div>';
 
   // ---- Panorama ----
-  const deuda = sum(S.config.tarjetas, c => +c.saldo || 0), fij = sum(S.config.fijos, f => fijoMonto(f, ym));
+  const deuda = sum(S.config.tarjetas, c => cardTotal(c)), fij = sum(S.config.fijos, f => fijoMonto(f, ym));
   const msiAll = (S.config.msi || []).map(m => msiInfo(m, ym));
+  const vales = (S.config.vales || []);
+  const valesH = vales.length ? '<div class="panel"><div class="head"><h2>Tus vales</h2><button class="btn ghost sm" data-act="go" data-r="vales">Ver vales</button></div>' + vales.map(v => { const px = valeProx(v); return '<div class="row" data-act="go" data-r="vales"><div class="grow"><div class="nm">' + esc(v.nombre) + '</div><div class="sb">' + (px ? 'Próxima recarga ' + inDays(px.dias) : 'Sin recarga mensual') + '</div></div><div class="amt">' + money(valeSaldo(v)) + '</div></div>'; }).join('') + '</div>' : '';
   const pano = '<div class="panel"><h2>Panorama del mes</h2><div class="row" data-act="go" data-r="tarjetas"><div class="grow nm">Deuda total en tarjetas</div><div class="amt">' + money(deuda) + '</div></div>'
     + '<div class="row" data-act="go" data-r="fijos"><div class="grow nm">Gastos fijos y suscripciones</div><div class="amt">' + money(fij) + '</div></div>'
     + (msiAll.length ? '<div class="row" data-act="go" data-r="tarjetas"><div class="grow nm">Pagos a meses este mes</div><div class="amt">' + money(sum(msiAll.filter(i => i.estado === 'activa'), i => i.monto)) + '</div></div><div class="row" data-act="go" data-r="tarjetas"><div class="grow nm">Por pagar en compras a meses</div><div class="amt">' + money(sum(msiAll, i => i.faltaTotal)) + '</div></div>' : '') + '</div>';
 
-  return h + '<div class="cols two"><div>' + pagar + ritmo + topesH + '</div><div>' + reparto + tarj + metas + pano + '</div></div>';
+  return h + '<div class="cols two"><div>' + pagar + ritmo + topesH + '</div><div>' + reparto + tarj + valesH + metas + pano + '</div></div>';
 }

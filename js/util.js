@@ -43,9 +43,13 @@ export const ICONS={
   plus:'<path d="M12 5v14M5 12h14"/>',
   check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  vales:'<path d="M3 8a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 000-4z"/><path d="M14 6v12" stroke-dasharray="2 3"/>',
   eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   eyeoff:'<path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0112 6c6.5 0 10 6 10 6a17 17 0 01-3.2 3.9"/><path d="M6.6 6.7C3.9 8.4 2 12 2 12s3.5 7 10 7c1.4 0 2.7-.3 3.8-.8"/><path d="M9.9 9.9a3 3 0 004.2 4.2"/>'
 };
 export const ic=n=>'<svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+ICONS[n]+'</svg>';
 export const sum=(arr,f)=>arr.reduce((s,x)=>s+f(x),0);
 export const monthIdx=ym=>{const p=parseYM(ym);return p.y*12+p.m};
+// Primer día con ese número de día del mes que sea DESPUÉS de la fecha dada
+export function nextOccAfter(day,date){let y=date.getFullYear(),m=date.getMonth();for(let i=0;i<14;i++){const d=Math.min(day,lastDay(y,m+1));const c=new Date(y,m,d);if(c>date)return c;m++;if(m>11){m=0;y++}}return date}
+export const norm=s=>String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();

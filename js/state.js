@@ -14,7 +14,7 @@ const LS_DIRTY = 'mis-finanzas-dirty';
 export const S = { config: null, months: {} };
 export const dirty = { cfg: false, months: new Set() };
 export const typing = () => { const a = document.activeElement; return !!(a && a.matches && a.matches('#view input,#view select,#view textarea')); };
-export const blankConfig = () => ({ onboarded: false, demo: false, ingresoQ: 0, tarjetas: [], msi: [], fijos: [], metas: [], plantilla: [], cats: ['Mandado', 'Salidas', 'Gasolina', 'Salud', 'Hogar', 'Servicios', 'Compras', 'Otros'] });
+export const blankConfig = () => ({ onboarded: false, demo: false, ingresoQ: 0, tarjetas: [], msi: [], vales: [], ingresosRec: [], fijos: [], metas: [], plantilla: [], cats: ['Mandado', 'Salidas', 'Gasolina', 'Salud', 'Hogar', 'Servicios', 'Compras', 'Otros'] });
 
 export function loadLocal() {
   try {

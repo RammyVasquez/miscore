@@ -1,5 +1,5 @@
-// Reglas de negocio: quincenas, sobres, tarjetas y gastos recurrentes.
-import { uid8, round2, pad, ymOf, lastDay, parseYM, nextOcc, daysTo, sum, monthIdx, addMonths } from './util.js';
+// Reglas de negocio: quincenas, apartados, tarjetas y gastos recurrentes.
+import { uid8, round2, pad, ymd, ymOf, lastDay, parseYM, nextOcc, nextOccAfter, daysTo, sum, monthIdx, addMonths, norm } from './util.js';
 import { S, touchCfg, touchMonth } from './state.js';
 
 export const getMonth=ym=>{if(!S.months[ym])S.months[ym]={tx:[]};if(!S.months[ym].tx)S.months[ym].tx=[];return S.months[ym]};
@@ -12,10 +12,11 @@ export function getQ(ym,n){
 export const qBounds=(ym,n)=>{const p=parseYM(ym);return n===1?[ym+'-01',ym+'-15']:[ym+'-16',ym+'-'+pad(lastDay(p.y,p.m))]};
 export const qTx=(ym,n)=>{const b=qBounds(ym,n);return (roMonth(ym).tx||[]).filter(t=>t.f>=b[0]&&t.f<=b[1])};
 export const allocMonto=(a,base)=>(+a.pct>0)?round2((+base||0)*a.pct/100):(+a.monto||0);
-export const qBase=(ym,n)=>{const q=roMonth(ym)['q'+n];if(!q)return 0;return (+q.ingreso||0)+sum(qTx(ym,n).filter(t=>t.tipo==='ingreso'),t=>t.monto)};
+export const qBase=(ym,n)=>{const q=roMonth(ym)['q'+n];if(!q)return 0;return (+q.ingreso||0)+sum(qTx(ym,n).filter(t=>t.tipo==='ingreso'),t=>t.monto)+sum(recsQ(ym,n),x=>x.m)};
 export function qSummary(ym,n){
   const q=getQ(ym,n),tx=qTx(ym,n);
-  const extras=sum(tx.filter(t=>t.tipo==='ingreso'),t=>t.monto);
+  const recs=recsQ(ym,n);
+  const extras=sum(tx.filter(t=>t.tipo==='ingreso'),t=>t.monto)+sum(recs,x=>x.m);
   const gastos=tx.filter(t=>t.tipo!=='ingreso');
   const cash=gastos.filter(t=>t.medio==='efectivo'||!t.medio);
   const ingreso=(+q.ingreso||0)+extras;
@@ -26,19 +27,19 @@ export function qSummary(ym,n){
     else by[a.id]={plan:m};
   });
   const unb=sum(cash.filter(t=>!cats.has(t.cat)),t=>t.monto);
-  return {q,tx,extras,ingreso,asignado,over,unb,libre:round2(ingreso-asignado-over-unb),gastado:sum(gastos,t=>t.monto),by};
+  return {q,tx,recs,extras,ingreso,asignado,over,unb,libre:round2(ingreso-asignado-over-unb),gastado:sum(gastos,t=>t.monto),by};
 }
 export function txEffect(t,sign){
   if(t.tipo==='ingreso')return;
   const c=S.config.tarjetas.find(c=>c.id===t.medio);
-  if(c){c.saldo=round2((+c.saldo||0)+sign*t.monto);touchCfg()}
+  if(c){c.total=round2(cardTotal(c)+sign*t.monto);touchCfg()}
 }
 export function cardPlan(c,ym){
   const mo=roMonth(ym);let plan=0,paid=0;
   ['q1','q2'].forEach(k=>{const q=mo[k];if(!q)return;q.allocs.forEach(a=>{if(a.kind==='tarjeta'&&a.ref===c.id){const m=allocMonto(a,qBase(ym,k==='q1'?1:2));plan+=m;if(a.done)paid+=m}})});
   return {plan,paid};
 }
-export const cardName=id=>{if(!id||id==='efectivo')return 'Efectivo o débito';const c=S.config.tarjetas.find(c=>c.id===id);return c?c.nombre:'Tarjeta eliminada'};
+export const cardName=id=>{if(!id||id==='efectivo')return 'Efectivo o débito';const c=S.config.tarjetas.find(c=>c.id===id);if(c)return c.nombre;const v=(S.config.vales||[]).find(v=>v.id===id);return v?v.nombre:'Tarjeta eliminada'};
 export const KIND={gasto:{l:'Gasto',c:'var(--k-gas)'},tarjeta:{l:'Tarjeta',c:'var(--k-tar)'},meta:{l:'Ahorro',c:'var(--k-met)'},diezmo:{l:'Diezmo',c:'var(--k-die)'},pago:{l:'Pago',c:'var(--k-pag)'}};
 export function catTotals(ym){
   const m={};(roMonth(ym).tx||[]).forEach(t=>{if(t.tipo==='ingreso')return;m[t.cat||'Otros']=(m[t.cat||'Otros']||0)+t.monto});
@@ -62,11 +63,11 @@ export function fijoMonto(f,ym){
 export const esDirecto=f=>!f.medio||f.medio==='efectivo';
 export const fijosQ=(ym,n)=>S.config.fijos.map(f=>({f:f,m:fijoMontoQ(f,ym,n)})).filter(x=>x.m>0);
 // Gastos del mes que pagas directo y todavía no tienen quincena asignada
-export const fijosSinQ=ym=>S.config.fijos.filter(f=>!f.porQ&&!(+f.q>0)&&esDirecto(f)&&fijoDue(f,ym)&&fijoMonto(f,ym)>0);
+export const fijosSinQ=ym=>S.config.fijos.filter(f=>!f.porQ&&!(+f.q>0)&&esDirecto(f)&&fijoDue(f,ym)&&fijoMonto(f,ym)>0&&!enApartados(ym,1,f.nombre)&&!enApartados(ym,2,f.nombre));
 export const metaObj=m=>(m.desglose&&m.desglose.length)?sum(m.desglose,d=>+d.m||0):(+m.objetivo||0);
 export function revertAlloc(a){
   if(!a.done)return;
-  if(a.kind==='tarjeta'){const c=S.config.tarjetas.find(c=>c.id===a.ref);if(c){c.saldo=round2((+c.saldo||0)+(+a.aplicado||0));touchCfg()}}
+  if(a.kind==='tarjeta'){const c=S.config.tarjetas.find(c=>c.id===a.ref);if(c){c.saldo=round2((+c.saldo||0)+(+a.aplicado||0));if(a.aplT){c.total=round2((+c.total||0)+a.aplT)}touchCfg()}delete a.aplT}
   if(a.kind==='meta'){const m=S.config.metas.find(c=>c.id===a.ref);if(m){m.ahorrado=round2((+m.ahorrado||0)-(+a.aplicado||0));touchCfg()}}
 }
 
@@ -83,3 +84,48 @@ export function msiInfo(m, ym) {
 }
 export const msiDeTarjeta = id => (S.config.msi || []).filter(m => m.tarjeta === id);
 export const msiMes = (id, ym) => sum(msiDeTarjeta(id).filter(m => msiInfo(m, ym).estado === 'activa'), m => msiInfo(m, ym).monto);
+
+// ---- Tarjetas: pago para no generar intereses (saldo) y saldo total ----
+export const cardTotal=c=>Math.max(+c.total||0,+c.saldo||0);
+export const cardPorVencer=c=>round2(Math.max(0,cardTotal(c)-(+c.saldo||0)));
+// Lo que se vería en el pago de la siguiente fecha de corte: mensualidades a meses + cargos fijos de esa tarjeta
+export function cardEstimado(c){
+  const i=cardInfo(c),ymE=ymOf(i.nc);
+  const msi=msiMes(c.id,ymE),fij=round2(sum(S.config.fijos.filter(f=>f.medio===c.id),f=>fijoMonto(f,ymE)));
+  return {ym:ymE,corte:i.nc,limite:nextOccAfter(+c.limite||1,i.nc),msi:msi,fij:fij,total:round2(msi+fij)};
+}
+
+// ---- Ingresos extra que se repiten (bono mensual, etc.) ----
+export const recActivo=(r,ym)=>ym>=(r.desde||ym)&&(!r.hasta||ym<=r.hasta);
+export function recMonto(r,ym,n){
+  if(!recActivo(r,ym))return 0;
+  if(r.cada!=='q'&&+r.q!==n)return 0;
+  const v=(r.cada!=='q'&&r.vals)?r.vals[ym]:null;
+  return (v!=null&&v!=='')?(+v||0):(+r.monto||0);
+}
+export const recsQ=(ym,n)=>(S.config.ingresosRec||[]).map(r=>({r:r,m:recMonto(r,ym,n)})).filter(x=>x.m>0);
+
+// ---- Vales (despensa, gasolina…): no son sueldo; se pagan "con vales" al registrar un gasto ----
+export const valeTx=id=>{const out=[];Object.keys(S.months).forEach(k=>(S.months[k].tx||[]).forEach(t=>{if(t.medio===id&&t.tipo!=='ingreso')out.push(t)}));return out};
+export function valeSaldo(v,hoy){
+  hoy=hoy||new Date();const end=ymd(hoy),f0=v.fecha0||end;
+  let rec=0;
+  if(+v.recarga>0){
+    let y=+f0.slice(0,4),m=+f0.slice(5,7);
+    for(let i=0;i<600;i++){
+      const d=Math.min(Math.max(1,Math.round(+v.dia)||1),lastDay(y,m)),date=y+'-'+pad(m)+'-'+pad(d);
+      if(date>end)break;if(date>f0)rec++;m++;if(m>12){m=1;y++}
+    }
+  }
+  const gasto=sum(valeTx(v.id).filter(t=>t.ts?t.ts>(+v.ts0||0):t.f>f0),t=>t.monto);
+  return round2((+v.saldo0||0)+rec*(+v.recarga||0)-gasto);
+}
+export function valeProx(v,hoy){
+  if(!(+v.recarga>0))return null;
+  hoy=hoy||new Date();const d=nextOccAfter(Math.round(+v.dia)||1,new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate()));
+  return {fecha:d,dias:daysTo(d)};
+}
+export const valeGastoMes=(v,ym)=>sum(valeTx(v.id).filter(t=>t.f.slice(0,7)===ym),t=>t.monto);
+
+// ---- Apartados que ya existen con el mismo nombre que un gasto fijo (para no contarlos dos veces) ----
+export const enApartados=(ym,n,nombre)=>{const q=roMonth(ym)['q'+n];return !!q&&q.allocs.some(a=>norm(a.nombre)===norm(nombre))};

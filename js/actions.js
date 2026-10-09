@@ -6,7 +6,7 @@ import { authForm } from './auth.js';
 import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc, fijosQ, esDirecto } from './logic.js';
 import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet } from './ui.js';
 import { render } from './render.js';
-import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm, msiForm } from './forms.js';
+import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm, msiForm, recForm, valeForm } from './forms.js';
 import { seedDemo } from './seed.js';
 
 export function toggleAlloc(id,ymArg,qArg){
@@ -14,7 +14,7 @@ export function toggleAlloc(id,ymArg,qArg){
   const q=getQ(Y,N),a=q.allocs.find(x=>x.id===id);if(!a)return;
   if(!a.done){
     a.done=true;const m=allocMonto(a,qBase(Y,N));a.aplicado=m;
-    if(a.kind==='tarjeta'){const c=S.config.tarjetas.find(c=>c.id===a.ref);if(c){const red=Math.min(+c.saldo||0,m);c.saldo=round2((+c.saldo||0)-red);a.aplicado=red;touchCfg()}}
+    if(a.kind==='tarjeta'){const c=S.config.tarjetas.find(c=>c.id===a.ref);if(c){const red=Math.min(+c.saldo||0,m);c.saldo=round2((+c.saldo||0)-red);if(+c.total>0){c.total=round2(Math.max(0,c.total-red));a.aplT=red}a.aplicado=red;touchCfg()}}
     else if(a.kind==='meta'){const g=S.config.metas.find(c=>c.id===a.ref);if(g){g.ahorrado=round2((+g.ahorrado||0)+m);touchCfg()}}
   }else{revertAlloc(a);a.done=false;delete a.aplicado}
   touchMonth(Y);render();
@@ -63,14 +63,14 @@ export const ACT={
   'add-alloc'(){allocForm(null)},
   'copy-prev'(){
     const pn=ui.q===2?1:2,pym=ui.q===2?ui.ym:addMonths(ui.ym,-1),pm=roMonth(pym)['q'+pn];
-    if(!pm||!pm.allocs.length){toast('La quincena anterior no tiene sobres');return}
-    askConfirm('Se reemplazarán los sobres de esta quincena por los de la anterior.','Copiar sobres',()=>{
+    if(!pm||!pm.allocs.length){toast('La quincena anterior no tiene apartados');return}
+    askConfirm('Se reemplazarán los apartados de esta quincena por los de la anterior.','Copiar apartados',()=>{
       const q=getQ(ui.ym,ui.q);q.allocs.forEach(revertAlloc);
       q.allocs=pm.allocs.map(a=>{const c=Object.assign({},a,{id:uid8(),done:false});delete c.aplicado;return c});
       touchMonth(ui.ym);render()});
   },
   'save-template'(){
-    askConfirm('Las próximas quincenas nuevas empezarán con estos sobres.','Guardar plantilla',()=>{
+    askConfirm('Las próximas quincenas nuevas empezarán con estos apartados.','Guardar plantilla',()=>{
       const q=getQ(ui.ym,ui.q);
       S.config.plantilla=q.allocs.map(a=>({id:uid8(),nombre:a.nombre,kind:a.kind,ref:a.ref||'',cat:a.cat||'',monto:a.monto||0,pct:a.pct||0}));
       touchCfg();toast('Plantilla guardada')});
@@ -80,6 +80,9 @@ export const ACT={
   'add-card'(){cardForm(null)},'edit-card'(el){cardForm(el.dataset.id)},
   'card-charge'(el){txForm(null,null,{medio:el.dataset.id})},
   'add-meta'(){metaForm(null)},'edit-meta'(el){metaForm(el.dataset.id)},'meta-add'(el){metaAport(el.dataset.id)},
+  'edit-rec'(el){if(el.dataset.ym)ui.ym=el.dataset.ym;recForm(el.dataset.id)},
+  'add-vale'(){valeForm(null)},'edit-vale'(el){valeForm(el.dataset.id)},
+  'vale-gasto'(el){txForm(null,null,{medio:el.dataset.id})},
   'add-msi'(el){if(!S.config.tarjetas.length){toast('Primero agrega una tarjeta');return}msiForm(null,el.dataset.id)},
   'edit-msi'(el){msiForm(el.dataset.id)},
   'add-fijo'(){fijoForm(null)},'edit-fijo'(el){if(el.dataset.ym)ui.fym=el.dataset.ym;fijoForm(el.dataset.id)},
@@ -98,7 +101,7 @@ export const ACT={
     openForm({title:f.nombre+' en '+mes,note:'Escribe lo que realmente pagaste este mes. Déjalo vacío para volver al monto estimado.',values:{monto:(f.vals&&f.vals[ui.fym]!=null)?f.vals[ui.fym]:''},fields:[{k:'monto',label:'Monto real',type:'number',raw:true}],
       onSubmit:o=>{f.vals=f.vals||{};if(String(o.monto==null?'':o.monto).trim()==='')delete f.vals[ui.fym];else f.vals[ui.fym]=num(o.monto);touchCfg();render()}});
   },
-  // Aparta en un sobre lo que toca pagar directo (efectivo o débito) de los gastos fijos de la quincena
+  // Aparta en un apartado lo que toca pagar directo (efectivo o débito) de los gastos fijos de la quincena
   'fijos-sobre'(){
     const total=round2(sum(fijosQ(ui.ym,ui.q).filter(x=>esDirecto(x.f)),x=>x.m));
     if(!(total>0))return;

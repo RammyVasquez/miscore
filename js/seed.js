@@ -8,7 +8,7 @@ import { render } from './render.js';
 export function seedDemo(){
   const now=new Date(),today=now.getDate(),ym=ymOf(now),prev=addMonths(ym,-1),nNow=today<=15?1:2;
   const c=blankConfig();c.onboarded=true;c.demo=true;c.ingresoQ=12000;
-  const azul={id:uid8(),nombre:'Tarjeta azul',saldo:3200,corte:5,limite:25,color:'#1D4ED8'};
+  const azul={id:uid8(),nombre:'Tarjeta azul',saldo:3200,total:4500,corte:5,limite:25,color:'#1D4ED8'};
   const tienda={id:uid8(),nombre:'Tarjeta de tienda',saldo:850,corte:15,limite:5,color:'#E0463A'};
   c.tarjetas=[azul,tienda];
   c.msi=[
@@ -19,6 +19,9 @@ export function seedDemo(){
   const fin=new Date(now.getFullYear(),now.getMonth()+6,1);
   const viaje={id:uid8(),nombre:'Vacaciones',objetivo:0,ahorrado:3500,fecha:ymd(fin),desglose:[{n:'Hospedaje',m:6000},{n:'Transporte',m:5500},{n:'Comidas y paseos',m:3500}]};
   c.metas=[fondo,viaje];
+  const vale={id:uid8(),nombre:'Vales de despensa',saldo0:900,fecha0:ymd(now),ts0:Date.now()-5000,recarga:1500,dia:1};
+  c.vales=[vale];
+  c.ingresosRec=[{id:uid8(),nombre:'Bono mensual',monto:1400,cada:'1',q:2,desde:ym,hasta:'',vals:{}}];
   const fx=(nombre,monto,tipo,medio,cat,v,cada,q)=>({id:uid8(),nombre:nombre,monto:monto,tipo:tipo,medio:medio,cat:cat,variable:!!v,cada:cada||1,q:q||0,desde:cada>1?ym:'',vals:{}});
   c.fijos=[
     fx('Luz',900,'fijo',azul.id,'Servicios',true,1,2),fx('Agua',480,'fijo','efectivo','Servicios',true,2,2),
@@ -41,10 +44,11 @@ export function seedDemo(){
     const q=getQ(prev,n);
     q.allocs.forEach(a=>{if(a.kind!=='gasto'){a.done=true;if(a.kind==='meta')a.aplicado=a.monto}});
   });
-  const addTx=(mes,dia,tipo,cat,monto,medio,nota)=>getMonth(mes).tx.push({id:uid8(),tipo:tipo,monto:monto,cat:cat,nota:nota,f:mes+'-'+pad(dia),medio:medio});
+  const addTx=(mes,dia,tipo,cat,monto,medio,nota,ts)=>getMonth(mes).tx.push({id:uid8(),tipo:tipo,monto:monto,cat:cat,nota:nota,f:mes+'-'+pad(dia),medio:medio,ts:ts});
   [[3,'Mandado',1320,'efectivo','Súper'],[8,'Salidas',640,'efectivo','Cena con amigos'],[12,'Gasolina',900,azul.id,'Gasolina'],[19,'Mandado',1180,'efectivo','Súper'],[20,'Servicios',870,azul.id,'Luz'],[24,'Salidas',520,'efectivo','Cine y palomitas']]
     .forEach(t=>addTx(prev,t[0],'gasto',t[1],t[2],t[3],t[4]));
   addTx(prev,10,'ingreso','Ingreso extra',1500,'efectivo','Venta de garage');
+  addTx(ym,Math.min(2,today),'gasto','Mandado',380,vale.id,'Súper con vales',Date.now());
 
   // mes actual: solo movimientos que ya "pasaron"
   [[1,'Mandado',420,'efectivo','Súper'],[3,'Salidas',260,'efectivo','Tacos'],[5,'Gasolina',520,azul.id,'Gasolina'],[8,'Mandado',680,'efectivo','Mercado'],[12,'Servicios',900,azul.id,'Luz'],[14,'Salidas',380,'efectivo','Cine'],[18,'Mandado',1150,'efectivo','Súper'],[21,'Salidas',450,'efectivo','Cena'],[25,'Gasolina',560,azul.id,'Gasolina']]

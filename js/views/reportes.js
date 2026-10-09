@@ -1,6 +1,6 @@
 // Pantalla: reportes.
 import { esc, money, ymOf, MESES, MES3, cap, parseYM, addMonths, sum } from '../util.js';
-import { roMonth, catTotals } from '../logic.js';
+import { roMonth, catTotals, recsQ } from '../logic.js';
 import { donut, legend, barsChart, PAL } from '../charts.js';
 import { ui } from '../ui.js';
 
@@ -8,6 +8,7 @@ function monthTotals(ym) {
   const mo = roMonth(ym);
   let ing = 0, aho = 0, gas = 0;
   ['q1', 'q2'].forEach(k => { const q = mo[k]; if (q) { ing += +q.ingreso || 0; q.allocs.forEach(a => { if (a.kind === 'meta' && a.done) aho += +a.aplicado || 0; }); } });
+  [1, 2].forEach(n => { if (mo['q' + n]) ing += sum(recsQ(ym, n), x => x.m); });
   (mo.tx || []).forEach(t => { if (t.tipo === 'ingreso') ing += t.monto; else gas += t.monto; });
   return { ing: ing, gas: gas, aho: aho };
 }

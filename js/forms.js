@@ -1,17 +1,17 @@
-// Formularios de alta y edición (sobres, movimientos, tarjetas, metas, fijos).
+// Formularios de alta y edición (apartados, movimientos, tarjetas, metas, fijos).
 import { uid8, round2, num, ymd, ymOf, addMonths, MESES, parseYM } from './util.js';
 import { S, touchCfg, touchMonth } from './state.js';
-import { getMonth, roMonth, getQ, txEffect, revertAlloc, msiInfo } from './logic.js';
+import { getMonth, roMonth, getQ, txEffect, revertAlloc, msiInfo, valeSaldo } from './logic.js';
 import { ui, drawSheet, openForm, closeSheet, askConfirm, toast, sheet, sheetNote } from './ui.js';
 import { render } from './render.js';
 
 export const cardOpts=()=>S.config.tarjetas.map(c=>[c.id,c.nombre]);
-export const medioOpts=()=>[['efectivo','Efectivo o débito']].concat(cardOpts());
+export const medioOpts=()=>[['efectivo','Efectivo o débito']].concat(cardOpts()).concat((S.config.vales||[]).map(v=>[v.id,v.nombre]));
 export const catOpts=()=>S.config.cats.map(c=>[c,c]);
 export function allocForm(id){
   const q=getQ(ui.ym,ui.q),a=id?q.allocs.find(x=>x.id===id):null;
   openForm({
-    title:a?'Editar sobre':'Nuevo sobre',
+    title:a?'Editar apartado':'Nuevo apartado',
     values:a?{nombre:a.nombre,kind:a.kind,ref:a.ref||'',cat:a.cat||S.config.cats[0],monto:a.monto||'',pct:a.pct||''}:{nombre:'',kind:'gasto',ref:'',cat:S.config.cats[0]||'Otros',monto:'',pct:''},
     fields:[
       {k:'nombre',label:'Nombre',req:true},
@@ -36,19 +36,26 @@ export function txForm(id,ymHint,preset){
   const today=ymd(new Date());
   openForm({
     title:old?'Editar movimiento':'Nuevo movimiento',
-    values:old?{tipo:old.tipo||'gasto',monto:old.monto,cat:old.cat,nota:old.nota||'',f:old.f,medio:old.medio||'efectivo'}:Object.assign({tipo:'gasto',monto:'',cat:S.config.cats[0]||'Otros',nota:'',f:today,medio:'efectivo'},preset||{}),
+    values:old?{tipo:old.tipo||'gasto',monto:old.monto,cat:old.cat,nota:old.nota||'',f:old.f,medio:old.medio||'efectivo'}:Object.assign({tipo:'gasto',monto:'',cat:S.config.cats[0]||'Otros',nota:'',f:today,medio:'efectivo',repite:'0',qrec:String(ui.q)},preset||{}),
     fields:[
       {k:'tipo',label:'Tipo',type:'select',re:true,opts:[['gasto','Gasto'],['ingreso','Ingreso extra']]},
       {k:'monto',label:'Monto',type:'number',req:true},
+      {k:'repite',label:'¿Se repite?',type:'select',re:true,opts:[['0','No, solo esta vez'],['1','Sí, cada mes (un bono, por ejemplo)'],['q','Sí, cada quincena']],when:v=>v.tipo==='ingreso'&&!old},
+      {k:'qrec',label:'¿En qué quincena lo recibes?',type:'select',opts:[['1','1ª quincena (días 1 al 15)'],['2','2ª quincena (días 16 al fin de mes)']],hint:'Si te lo pagan el día 15, normalmente sirve para la 2ª quincena.',when:v=>v.tipo==='ingreso'&&!old&&v.repite==='1'},
       {k:'cat',label:'Categoría',type:'select',opts:catOpts,when:v=>v.tipo==='gasto'},
       {k:'medio',label:'Se pagó con',type:'select',opts:medioOpts,when:v=>v.tipo==='gasto'},
       {k:'nota',label:'Nota (opcional)'},
-      {k:'f',label:'Fecha',type:'date',req:true}
+      {k:'f',label:'Fecha',type:'date',req:true,when:v=>!(v.tipo==='ingreso'&&!old&&v.repite!=='0')}
     ],
     onSubmit:o=>{
-      if(!(o.monto>0)){sheet.cur.err='El monto debe ser mayor a cero';drawSheet();return false}
+      if(!(o.monto>0)){sheetNote('err','El monto debe ser mayor a cero');return false}
+      if(o.tipo==='ingreso'&&!old&&o.repite&&o.repite!=='0'){
+        S.config.ingresosRec=S.config.ingresosRec||[];
+        S.config.ingresosRec.push({id:uid8(),nombre:o.nota.trim()||'Ingreso extra',monto:round2(o.monto),cada:o.repite,q:o.repite==='1'?(+o.qrec||1):0,desde:ui.route==='gastos'?ymOf(new Date()):ui.ym,hasta:'',vals:{}});
+        touchCfg();render();toast('Listo: este ingreso se repetirá '+(o.repite==='q'?'cada quincena':'cada mes'));return;
+      }
       if(old){const om=getMonth(ymHint);om.tx=om.tx.filter(t=>t.id!==old.id);txEffect(old,-1);touchMonth(ymHint)}
-      const t={id:old?old.id:uid8(),tipo:o.tipo,monto:round2(o.monto),cat:o.tipo==='ingreso'?'Ingreso extra':o.cat,nota:o.nota.trim(),f:o.f,medio:o.tipo==='ingreso'?'efectivo':o.medio};
+      const t={id:old?old.id:uid8(),tipo:o.tipo,monto:round2(o.monto),cat:o.tipo==='ingreso'?'Ingreso extra':o.cat,nota:o.nota.trim(),f:o.f,medio:o.tipo==='ingreso'?'efectivo':o.medio,ts:old?old.ts:Date.now()};
       const ym=t.f.slice(0,7);getMonth(ym).tx.push(t);txEffect(t,1);touchMonth(ym);render();toast(old?'Movimiento actualizado':'Movimiento guardado');
     },
     onDelete:old?()=>{const om=getMonth(ymHint);om.tx=om.tx.filter(t=>t.id!==old.id);txEffect(old,-1);touchMonth(ymHint);closeSheet();render()}:null
@@ -59,17 +66,18 @@ export function cardForm(id){
   const c=id?S.config.tarjetas.find(x=>x.id===id):null;
   openForm({
     title:c?'Editar tarjeta':'Nueva tarjeta',
-    values:c?{nombre:c.nombre,saldo:c.saldo,corte:c.corte,limite:c.limite,color:c.color||'#1D4ED8'}:{nombre:'',saldo:'',corte:'',limite:'',color:'#1D4ED8'},
+    values:c?{nombre:c.nombre,saldo:c.saldo,total:c.total||'',corte:c.corte,limite:c.limite,color:c.color||'#1D4ED8'}:{nombre:'',saldo:'',total:'',corte:'',limite:'',color:'#1D4ED8'},
     fields:[
       {k:'nombre',label:'Nombre',req:true},
-      {k:'saldo',label:'Saldo pendiente por pagar',type:'number'},
+      {k:'saldo',label:'Pago para no generar intereses',type:'number',hint:'Es lo que dice tu estado de cuenta que debes pagar antes de la fecha límite.'},
+      {k:'total',label:'Saldo total de la tarjeta (opcional)',type:'number',hint:'Si lo escribes, la diferencia se muestra como "por vencer": compras y mensualidades que todavía no se cobran.'},
       {k:'corte',label:'Día de corte (1 a 31)',type:'number',req:true},
       {k:'limite',label:'Día límite de pago (1 a 31)',type:'number',req:true},
       {k:'color',label:'Color',type:'select',opts:COLORS}
     ],
     onSubmit:o=>{
       if(o.corte<1||o.corte>31||o.limite<1||o.limite>31){sheet.cur.err='Los días deben estar entre 1 y 31';drawSheet();return false}
-      const d={nombre:o.nombre.trim(),saldo:round2(o.saldo),corte:Math.round(o.corte),limite:Math.round(o.limite),color:o.color};
+      const d={nombre:o.nombre.trim(),saldo:round2(o.saldo),total:round2(o.total),corte:Math.round(o.corte),limite:Math.round(o.limite),color:o.color};
       if(c)Object.assign(c,d);else S.config.tarjetas.push(Object.assign({id:uid8()},d));
       touchCfg();render();
     },
@@ -163,5 +171,54 @@ export function msiForm(id, cardId) {
       touchCfg(); render(); toast(m ? 'Compra actualizada' : 'Compra a meses guardada');
     },
     onDelete: m ? () => { S.config.msi = S.config.msi.filter(x => x.id !== m.id); touchCfg(); closeSheet(); render(); } : null
+  });
+}
+
+// Ingreso extra que se repite (bono mensual, etc.)
+export function recForm(id) {
+  const r = (S.config.ingresosRec || []).find(x => x.id === id); if (!r) return;
+  const mes = MESES[parseYM(ui.ym).m - 1];
+  openForm({
+    title: 'Ingreso que se repite',
+    values: { nombre: r.nombre, monto: r.monto, cada: r.cada === 'q' ? 'q' : '1', q: String(r.q || 1), montoMes: (r.vals && r.vals[ui.ym] != null) ? r.vals[ui.ym] : '', hasta: r.hasta || '' },
+    fields: [
+      { k: 'nombre', label: 'Nombre', req: true },
+      { k: 'monto', label: 'Monto', type: 'number', req: true },
+      { k: 'cada', label: '¿Cada cuánto llega?', type: 'select', re: true, opts: [['1', 'Cada mes'], ['q', 'Cada quincena']] },
+      { k: 'q', label: '¿En qué quincena lo recibes?', type: 'select', opts: [['1', '1ª quincena (días 1 al 15)'], ['2', '2ª quincena (días 16 al fin de mes)']], hint: 'Si te lo pagan el día 15, normalmente sirve para la 2ª quincena.', when: v => v.cada === '1' },
+      { k: 'montoMes', label: 'Monto de ' + mes + ' (opcional)', type: 'number', raw: true, hint: 'Déjalo vacío para usar el monto de siempre. Escribe 0 si este mes no llega.', when: v => v.cada === '1' },
+      { k: 'hasta', label: 'Hasta qué mes (opcional)', type: 'month', hint: 'Déjalo vacío si no tiene fin.' }
+    ],
+    onSubmit: o => {
+      const vals = Object.assign({}, r.vals);
+      if (o.cada === '1' && String(o.montoMes == null ? '' : o.montoMes).trim() !== '') vals[ui.ym] = num(o.montoMes); else delete vals[ui.ym];
+      Object.assign(r, { nombre: o.nombre.trim(), monto: round2(o.monto), cada: o.cada, q: o.cada === 'q' ? 0 : (+o.q || 1), hasta: o.hasta || '', vals: vals });
+      touchCfg(); render();
+    },
+    onDelete: () => askConfirm('Se quitará este ingreso de todas tus quincenas, también de las pasadas.', 'Quitarlo', () => { S.config.ingresosRec = S.config.ingresosRec.filter(x => x.id !== r.id); touchCfg(); render(); })
+  });
+}
+
+// Vales de despensa, gasolina…
+export function valeForm(id) {
+  const v = id ? (S.config.vales || []).find(x => x.id === id) : null;
+  openForm({
+    title: v ? 'Editar vales' : 'Vales',
+    note: 'Los vales no cuentan como sueldo ni afectan tu dinero libre: sirven para saber cuánto te queda. Cuando compres con ellos, registra el gasto y en "Se pagó con" elige tus vales.',
+    values: v ? { nombre: v.nombre, saldo: valeSaldo(v), recarga: v.recarga || '', dia: v.dia || 1 } : { nombre: '', saldo: '', recarga: '', dia: 1 },
+    fields: [
+      { k: 'nombre', label: 'Nombre (por ejemplo, Vales de despensa)', req: true },
+      { k: 'saldo', label: 'Saldo actual', type: 'number' },
+      { k: 'recarga', label: 'Recarga mensual (opcional)', type: 'number', hint: 'Si te los recargan cada mes, escribe cuánto.' },
+      { k: 'dia', label: 'Día en que se recargan (1 a 31)', type: 'number', hint: 'Solo si tienen recarga mensual.' }
+    ],
+    onSubmit: o => {
+      if (o.recarga > 0 && (o.dia < 1 || o.dia > 31)) { sheetNote('err', 'El día debe estar entre 1 y 31.'); return false; }
+      const d = { nombre: o.nombre.trim(), saldo0: round2(o.saldo), fecha0: ymd(new Date()), ts0: Date.now(), recarga: round2(o.recarga), dia: Math.round(o.dia) || 1 };
+      S.config.vales = S.config.vales || [];
+      if (v) Object.assign(v, d); else S.config.vales.push(Object.assign({ id: uid8() }, d));
+      touchCfg(); render();
+    },
+    onDelete: v ? () => askConfirm('Se quitarán estos vales. Los gastos que registraste con ellos no se borran.', 'Eliminar vales', () => { S.config.vales = S.config.vales.filter(x => x.id !== v.id); touchCfg(); render(); }) : null
   });
 }
