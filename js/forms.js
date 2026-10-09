@@ -1,8 +1,8 @@
 // Formularios de alta y edición (sobres, movimientos, tarjetas, metas, fijos).
-import { uid8, round2, num, ymd, MESES, parseYM } from './util.js';
+import { uid8, round2, num, ymd, ymOf, addMonths, MESES, parseYM } from './util.js';
 import { S, touchCfg, touchMonth } from './state.js';
-import { getMonth, roMonth, getQ, txEffect, revertAlloc } from './logic.js';
-import { ui, drawSheet, openForm, closeSheet, askConfirm, toast, sheet } from './ui.js';
+import { getMonth, roMonth, getQ, txEffect, revertAlloc, msiInfo } from './logic.js';
+import { ui, drawSheet, openForm, closeSheet, askConfirm, toast, sheet, sheetNote } from './ui.js';
 import { render } from './render.js';
 
 export const cardOpts=()=>S.config.tarjetas.map(c=>[c.id,c.nombre]);
@@ -126,5 +126,37 @@ export function fijoForm(id){
       touchCfg();render();
     },
     onDelete:f?()=>{S.config.fijos=S.config.fijos.filter(x=>x.id!==f.id);touchCfg();closeSheet();render()}:null
+  });
+}
+
+// Compra que se está pagando a meses (meses sin intereses, por ejemplo)
+export function msiForm(id, cardId) {
+  const m = id ? (S.config.msi || []).find(x => x.id === id) : null;
+  const hoy = ymOf(new Date()), info = m ? msiInfo(m, hoy) : null;
+  openForm({
+    title: m ? 'Editar compra a meses' : 'Compra a meses',
+    note: 'Para lo que estás pagando en mensualidades, como los meses sin intereses.',
+    values: m
+      ? { nombre: m.nombre, tarjeta: m.tarjeta, total: m.total, meses: m.meses, mensualidad: m.mensualidad || '', actual: Math.min(Math.max(info.cur, 1), info.n) }
+      : { nombre: '', tarjeta: cardId || (S.config.tarjetas[0] && S.config.tarjetas[0].id) || '', total: '', meses: '', mensualidad: '', actual: 1 },
+    fields: [
+      { k: 'nombre', label: '¿Qué compraste?', req: true },
+      { k: 'tarjeta', label: 'Tarjeta', type: 'select', opts: cardOpts },
+      { k: 'total', label: 'Monto total de la compra', type: 'number', req: true },
+      { k: 'meses', label: '¿A cuántos meses?', type: 'number', req: true, hint: 'Por ejemplo 3, 6, 12 o 18.' },
+      { k: 'actual', label: '¿En qué mensualidad vas este mes?', type: 'number', hint: 'Si apenas empieza, pon 1. Si ya pagaste 4 mensualidades, pon 5.' },
+      { k: 'mensualidad', label: 'Mensualidad (opcional)', type: 'number', raw: true, hint: 'Déjalo vacío para usar el total entre los meses. Escríbelo solo si tu mensualidad es distinta, por ejemplo con intereses.' }
+    ],
+    onSubmit: o => {
+      const n = Math.round(o.meses);
+      if (!(o.total > 0) || n < 1 || n > 60) { sheetNote('err', 'Revisa el monto y los meses (de 1 a 60).'); return false; }
+      const act = Math.min(Math.max(Math.round(o.actual) || 1, 1), n);
+      const mens = String(o.mensualidad == null ? '' : o.mensualidad).trim() === '' ? 0 : round2(num(o.mensualidad));
+      const d = { nombre: o.nombre.trim(), tarjeta: o.tarjeta, total: round2(o.total), meses: n, mensualidad: mens, desde: addMonths(hoy, -(act - 1)) };
+      S.config.msi = S.config.msi || [];
+      if (m) Object.assign(m, d); else S.config.msi.push(Object.assign({ id: uid8() }, d));
+      touchCfg(); render(); toast(m ? 'Compra actualizada' : 'Compra a meses guardada');
+    },
+    onDelete: m ? () => { S.config.msi = S.config.msi.filter(x => x.id !== m.id); touchCfg(); closeSheet(); render(); } : null
   });
 }

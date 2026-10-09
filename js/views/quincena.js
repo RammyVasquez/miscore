@@ -1,7 +1,7 @@
 // Pantalla: quincena.
 import { esc, money, MESES, parseYM, ic, privacy } from '../util.js';
 import { S } from '../state.js';
-import { qBounds, allocMonto, qSummary } from '../logic.js';
+import { qBounds, allocMonto, qSummary, msiMes } from '../logic.js';
 import { chipK, txRow } from '../components.js';
 import { ui } from '../ui.js';
 
@@ -13,7 +13,8 @@ export function vQuincena(){
   h+='<div class="sub">Ingreso '+money(s.ingreso)+(s.extras?' (incluye '+money(s.extras)+' extra)':'')+' · '+(s.libre<0?'asignaste o gastaste más de lo que ingresa':'plan libre '+money(s.ingreso-s.asignado)+(s.over+s.unb>0?', menos '+money(s.over+s.unb)+' de gasto fuera de sobre':''))+'</div></section>';
   const ext=s.tx.filter(t=>t.tipo==='ingreso');
   h+='<div class="panel"><div class="head"><h2>Ingresos extra</h2><button class="btn sm" data-act="add-extra">Agregar</button></div>'+(ext.length?ext.map(txRow).join(''):'<div class="empty" style="padding:8px">Bonos, ventas, regalos… Lo que agregues aquí suma al Libre y también al cálculo de los sobres con porcentaje, como el diezmo.</div>')+'</div>';
-  h+='<div class="panel"><div class="head"><h2>Sobres de la quincena</h2><button class="btn sm" data-act="add-alloc">Agregar</button></div>';
+  h+='<div class="panel"><div class="head"><h2>Sobres de la quincena</h2><button class="btn sm" data-act="add-alloc">Agregar</button></div>'
+    +'<details class="what"><summary>¿Qué es un sobre?</summary><p>Un sobre es una parte de tu sueldo con un destino: renta, tarjeta, ahorro, comida… Antes, cuando te pagaban en efectivo, separabas el dinero en sobres con etiqueta y no gastabas de uno lo que era de otro. Aquí es igual, pero digital.</p><p>Ejemplo: si cobras $12,000 y apartas renta $3,000, tarjeta $2,000, ahorro $1,000 y despensa $1,500, te quedan <b>$4,500 libres</b>. Lo que no metes en ningún sobre es tu dinero libre.</p><p>Hay sobres de <b>pago</b> (los marcas con la palomita cuando ya pagaste) y sobres con <b>tope</b> de gasto (registras tus compras y ves cuánto te queda).</p></details>';
   if(!q.allocs.length)h+='<div class="empty">Sin sobres todavía. Agrega diezmo, renta, pagos de tarjeta o ahorro.</div>';
   q.allocs.forEach(a=>{
     const m=allocMonto(a,s.ingreso),inf=s.by[a.id]||{};
@@ -21,7 +22,7 @@ export function vQuincena(){
     if(a.kind!=='gasto')h+='<button class="chk" data-act="toggle-alloc" data-id="'+a.id+'" aria-pressed="'+(!!a.done)+'" aria-label="Marcar '+esc(a.nombre)+' como hecho">'+ic('check')+'</button>';
     h+='<div class="grow"><div class="nm">'+esc(a.nombre)+chipK(a.kind)+((+a.pct>0)?'<span class="chip">'+a.pct+'%</span>':'')+'</div>';
     if(a.kind==='gasto'&&inf.spent!=null){const r=m?inf.spent/m:0;h+='<div class="bar '+(r>1?'bad':r>.8?'warn':'')+'"><i style="width:'+Math.min(100,Math.round(r*100))+'%"></i></div><div class="sb">Gastado '+money(inf.spent)+' de '+money(m)+'</div>'}
-    else if(a.kind==='tarjeta'||a.kind==='meta'){const ref=a.kind==='tarjeta'?S.config.tarjetas.find(c=>c.id===a.ref):S.config.metas.find(c=>c.id===a.ref);h+='<div class="sb">'+(ref?esc(ref.nombre):'Sin '+(a.kind==='tarjeta'?'tarjeta':'meta')+' elegida')+(a.done?' · aplicado':'')+'</div>'}
+    else if(a.kind==='tarjeta'||a.kind==='meta'){const ref=a.kind==='tarjeta'?S.config.tarjetas.find(c=>c.id===a.ref):S.config.metas.find(c=>c.id===a.ref);h+='<div class="sb">'+(ref?esc(ref.nombre):'Sin '+(a.kind==='tarjeta'?'tarjeta':'meta')+' elegida')+(a.kind==='tarjeta'&&ref&&msiMes(ref.id,ym)>0?' · a meses este mes: '+money(msiMes(ref.id,ym)):'')+(a.done?' · aplicado':'')+'</div>'}
     h+='</div><div class="amt">'+money(m)+'</div><span class="pen">'+ic('edit')+'</span></div>';
   });
   h+='<div class="btns"><button class="btn ghost sm" data-act="copy-prev">Copiar sobres de la quincena anterior</button><button class="btn ghost sm" data-act="save-template">Usar esta como plantilla</button></div></div>';

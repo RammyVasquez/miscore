@@ -11,6 +11,10 @@ export function seedDemo(){
   const azul={id:uid8(),nombre:'Tarjeta azul',saldo:3200,corte:5,limite:25,color:'#1D4ED8'};
   const tienda={id:uid8(),nombre:'Tarjeta de tienda',saldo:850,corte:15,limite:5,color:'#E0463A'};
   c.tarjetas=[azul,tienda];
+  c.msi=[
+    {id:uid8(),nombre:'Laptop',tarjeta:azul.id,total:9600,meses:12,mensualidad:0,desde:addMonths(ym,-3)},
+    {id:uid8(),nombre:'Audífonos',tarjeta:azul.id,total:1800,meses:6,mensualidad:0,desde:addMonths(ym,-1)}
+  ];
   const fondo={id:uid8(),nombre:'Fondo de emergencia',objetivo:30000,ahorrado:8400,fecha:'',desglose:[]};
   const fin=new Date(now.getFullYear(),now.getMonth()+6,1);
   const viaje={id:uid8(),nombre:'Vacaciones',objetivo:0,ahorrado:3500,fecha:ymd(fin),desglose:[{n:'Hospedaje',m:6000},{n:'Transporte',m:5500},{n:'Comidas y paseos',m:3500}]};

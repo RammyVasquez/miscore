@@ -1,7 +1,7 @@
 // Pantalla: resumen (tablero principal).
 import { esc, money, ymOf, MESES, parseYM, inDays, fdate, sum, ic, privacy } from '../util.js';
 import { S } from '../state.js';
-import { qBounds, qSummary, cardInfo, fijoMonto, metaObj, KIND } from '../logic.js';
+import { qBounds, qSummary, cardInfo, fijoMonto, metaObj, KIND, msiInfo, msiMes } from '../logic.js';
 import { chipK } from '../components.js';
 import { donut, legend, ring, paceChart } from '../charts.js';
 
@@ -87,7 +87,7 @@ export function vResumen() {
   // ---- Tarjetas ----
   const cards = S.config.tarjetas.filter(c => +c.saldo > 0).map(c => ({ c: c, i: cardInfo(c) })).sort((a, b2) => a.i.dl - b2.i.dl);
   const tarj = '<div class="panel"><div class="head"><h2>Próximos pagos de tarjeta</h2><button class="btn ghost sm" data-act="go" data-r="tarjetas">Ver todas</button></div>'
-    + (cards.length ? cards.map(x => '<div class="row" data-act="go" data-r="tarjetas"><div class="grow"><div class="nm">' + esc(x.c.nombre) + '</div><div class="sb">Pagar antes del ' + fdate(x.i.nl) + '</div></div>'
+    + (cards.length ? cards.map(x => '<div class="row" data-act="go" data-r="tarjetas"><div class="grow"><div class="nm">' + esc(x.c.nombre) + '</div><div class="sb">Pagar antes del ' + fdate(x.i.nl) + (msiMes(x.c.id, ym) > 0 ? ' · a meses: ' + money(msiMes(x.c.id, ym)) : '') + '</div></div>'
       + '<div style="text-align:right"><div class="amt">' + money(x.c.saldo) + '</div><div class="when ' + (x.i.dl <= 3 ? 'w-bad' : x.i.dl <= 7 ? 'w-warn' : '') + '">' + inDays(x.i.dl) + '</div></div></div>').join('')
       : '<div class="empty">Sin saldos pendientes en tarjetas.</div>') + '</div>';
 
@@ -101,8 +101,10 @@ export function vResumen() {
 
   // ---- Panorama ----
   const deuda = sum(S.config.tarjetas, c => +c.saldo || 0), fij = sum(S.config.fijos, f => fijoMonto(f, ym));
+  const msiAll = (S.config.msi || []).map(m => msiInfo(m, ym));
   const pano = '<div class="panel"><h2>Panorama del mes</h2><div class="row" data-act="go" data-r="tarjetas"><div class="grow nm">Deuda total en tarjetas</div><div class="amt">' + money(deuda) + '</div></div>'
-    + '<div class="row" data-act="go" data-r="fijos"><div class="grow nm">Gastos fijos y suscripciones</div><div class="amt">' + money(fij) + '</div></div></div>';
+    + '<div class="row" data-act="go" data-r="fijos"><div class="grow nm">Gastos fijos y suscripciones</div><div class="amt">' + money(fij) + '</div></div>'
+    + (msiAll.length ? '<div class="row" data-act="go" data-r="tarjetas"><div class="grow nm">Pagos a meses este mes</div><div class="amt">' + money(sum(msiAll.filter(i => i.estado === 'activa'), i => i.monto)) + '</div></div><div class="row" data-act="go" data-r="tarjetas"><div class="grow nm">Por pagar en compras a meses</div><div class="amt">' + money(sum(msiAll, i => i.faltaTotal)) + '</div></div>' : '') + '</div>';
 
   return h + '<div class="cols two"><div>' + pagar + ritmo + topesH + '</div><div>' + reparto + tarj + metas + pano + '</div></div>';
 }

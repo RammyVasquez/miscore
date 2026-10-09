@@ -1,5 +1,5 @@
 // Reglas de negocio: quincenas, sobres, tarjetas y gastos recurrentes.
-import { uid8, round2, pad, ymOf, lastDay, parseYM, nextOcc, daysTo, sum, monthIdx } from './util.js';
+import { uid8, round2, pad, ymOf, lastDay, parseYM, nextOcc, daysTo, sum, monthIdx, addMonths } from './util.js';
 import { S, touchCfg, touchMonth } from './state.js';
 
 export const getMonth=ym=>{if(!S.months[ym])S.months[ym]={tx:[]};if(!S.months[ym].tx)S.months[ym].tx=[];return S.months[ym]};
@@ -53,3 +53,17 @@ export function revertAlloc(a){
   if(a.kind==='tarjeta'){const c=S.config.tarjetas.find(c=>c.id===a.ref);if(c){c.saldo=round2((+c.saldo||0)+(+a.aplicado||0));touchCfg()}}
   if(a.kind==='meta'){const m=S.config.metas.find(c=>c.id===a.ref);if(m){m.ahorrado=round2((+m.ahorrado||0)-(+a.aplicado||0));touchCfg()}}
 }
+
+// ---- Compras a meses (meses sin intereses u otros planes de pago) ----
+// Cada compra guarda en qué mes se cobró la 1ª mensualidad (`desde`); de ahí se sabe cuál toca cada mes.
+export function msiInfo(m, ym) {
+  const n = Math.max(1, Math.round(+m.meses || 1));
+  const monto = (+m.mensualidad > 0) ? +m.mensualidad : round2((+m.total || 0) / n);
+  const desde = m.desde || ym;
+  const cur = monthIdx(ym) - monthIdx(desde) + 1;                  // número de mensualidad que toca en ese mes
+  const estado = cur < 1 ? 'futura' : cur > n ? 'terminada' : 'activa';
+  const faltan = estado === 'activa' ? n - cur + 1 : estado === 'futura' ? n : 0;   // incluye la de este mes
+  return { n: n, monto: monto, cur: cur, estado: estado, faltan: faltan, faltaTotal: round2(monto * faltan), pagadas: n - faltan, fin: addMonths(desde, n - 1), inicio: desde };
+}
+export const msiDeTarjeta = id => (S.config.msi || []).filter(m => m.tarjeta === id);
+export const msiMes = (id, ym) => sum(msiDeTarjeta(id).filter(m => msiInfo(m, ym).estado === 'activa'), m => msiInfo(m, ym).monto);

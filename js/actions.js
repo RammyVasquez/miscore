@@ -6,7 +6,7 @@ import { authForm } from './auth.js';
 import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc } from './logic.js';
 import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet } from './ui.js';
 import { render } from './render.js';
-import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm } from './forms.js';
+import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm, msiForm } from './forms.js';
 import { seedDemo } from './seed.js';
 
 export function toggleAlloc(id,ymArg,qArg){
@@ -80,6 +80,8 @@ export const ACT={
   'add-card'(){cardForm(null)},'edit-card'(el){cardForm(el.dataset.id)},
   'card-charge'(el){txForm(null,null,{medio:el.dataset.id})},
   'add-meta'(){metaForm(null)},'edit-meta'(el){metaForm(el.dataset.id)},'meta-add'(el){metaAport(el.dataset.id)},
+  'add-msi'(el){if(!S.config.tarjetas.length){toast('Primero agrega una tarjeta');return}msiForm(null,el.dataset.id)},
+  'edit-msi'(el){msiForm(el.dataset.id)},
   'add-fijo'(){fijoForm(null)},'edit-fijo'(el){fijoForm(el.dataset.id)},
   'f-prev'(){ui.fym=addMonths(ui.fym,-1);render()},'f-next'(){ui.fym=addMonths(ui.fym,1);render()},
   'add-extra'(){const b=qBounds(ui.ym,ui.q),t=ymd(new Date());txForm(null,null,{tipo:'ingreso',f:(t>=b[0]&&t<=b[1])?t:b[0]})},

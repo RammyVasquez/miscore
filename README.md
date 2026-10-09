@@ -75,6 +75,11 @@ El **Resumen** responde en este orden: cuánto te queda libre (con su explicaci�
 
 El ojo de la barra superior (o tocar el monto grande) **oculta todos los montos** de la app para cuando la usas frente a otras personas. Se recuerda en ese dispositivo.
 
+## Sobres y compras a meses
+
+- **Sobre:** una parte de tu sueldo con un destino (renta, tarjeta, ahorro, comida…). Lo que no metes en ningún sobre es tu dinero libre. Hay sobres de *pago* (se marcan con la palomita) y sobres con *tope* de gasto. La app lo explica en **Quincena > ¿Qué es un sobre?**
+- **Compras a meses:** en **Tarjetas > Compra a meses** registras lo que pagas en mensualidades (monto total, número de meses y en qué mensualidad vas este mes). La app avanza sola cada mes, te dice cuántas faltan, cuánto falta por pagar y cuándo termina, y lo suma como "a meses" en el próximo pago de la tarjeta, en el sobre de esa tarjeta y en el panorama. Se cuentan aparte del saldo de la tarjeta para no sumarlas dos veces: en el saldo pon lo que debes pagar ahora.
+
 ## Primer uso
 
 Al abrir la app por primera vez pregunta si quieres precargar información de ejemplo (ingreso de $12,000 por quincena, tarjetas, gastos y metas inventados). Si dices que no, te pide cuánto cobras por quincena y empiezas en blanco. Con el ejemplo cargado aparece un aviso con el botón **Empezar desde cero**.
