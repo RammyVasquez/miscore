@@ -60,8 +60,9 @@ export async function persist() {
 export function setStatus(m) {
   rt.syncMode = m;
   const el = document.querySelector('.sync');
-  if (el) { el.className = 'sync ' + m; el.querySelector('span').textContent = statusText(); }
+  if (el) { el.className = 'sync ' + m; el.querySelector('span').textContent = statusShort(); }
 }
+export const statusShort = () => ({ cloud: 'Sincronizado', syncing: 'Sincronizando…', error: 'Sin conexión', local: 'Solo aquí' }[rt.syncMode] || '');
 export const statusText = () => ({
   cloud: 'Sincronizado con tu cuenta',
   syncing: 'Sincronizando…',

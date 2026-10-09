@@ -69,6 +69,12 @@ y abre http://localhost:8000
 3. Framework preset: **Other**. Sin build command ni output directory.
 4. Cada `git push` a `main` publica solo. Las demás ramas generan una URL de prueba.
 
+## Tablero y modo privado
+
+El **Resumen** responde en este orden: cuánto te queda libre (con su explicación en "¿Cómo se calcula?"), qué falta por pagar (se marca ahí mismo), a dónde se va la quincena (dona), cómo vas con el gasto del día a día frente al ritmo ideal, tus topes, los próximos pagos de tarjeta y tus metas.
+
+El ojo de la barra superior (o tocar el monto grande) **oculta todos los montos** de la app para cuando la usas frente a otras personas. Se recuerda en ese dispositivo.
+
 ## Primer uso
 
 Al abrir la app por primera vez pregunta si quieres precargar información de ejemplo (ingreso de $12,000 por quincena, tarjetas, gastos y metas inventados). Si dices que no, te pide cuánto cobras por quincena y empiezas en blanco. Con el ejemplo cargado aparece un aviso con el botón **Empezar desde cero**.

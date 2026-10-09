@@ -1,5 +1,5 @@
 // Acciones de los botones (data-act), cambios de campos y eventos globales.
-import { $, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean } from './util.js';
+import { $, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean, privacy, setHidden } from './util.js';
 import { S, dirty, typing, blankConfig, saveLocal, schedulePersist, touchCfg, touchMonth, rt, cloudAdapter, setMeta } from './state.js';
 import { syncNow, signOutAndClear } from './cloud.js';
 import { authForm } from './auth.js';
@@ -9,14 +9,15 @@ import { render } from './render.js';
 import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm } from './forms.js';
 import { seedDemo } from './seed.js';
 
-export function toggleAlloc(id){
-  const q=getQ(ui.ym,ui.q),a=q.allocs.find(x=>x.id===id);if(!a)return;
+export function toggleAlloc(id,ymArg,qArg){
+  const Y=ymArg||ui.ym,N=+qArg||ui.q;
+  const q=getQ(Y,N),a=q.allocs.find(x=>x.id===id);if(!a)return;
   if(!a.done){
-    a.done=true;const m=allocMonto(a,qBase(ui.ym,ui.q));a.aplicado=m;
+    a.done=true;const m=allocMonto(a,qBase(Y,N));a.aplicado=m;
     if(a.kind==='tarjeta'){const c=S.config.tarjetas.find(c=>c.id===a.ref);if(c){const red=Math.min(+c.saldo||0,m);c.saldo=round2((+c.saldo||0)-red);a.aplicado=red;touchCfg()}}
     else if(a.kind==='meta'){const g=S.config.metas.find(c=>c.id===a.ref);if(g){g.ahorrado=round2((+g.ahorrado||0)+m);touchCfg()}}
   }else{revertAlloc(a);a.done=false;delete a.aplicado}
-  touchMonth(ui.ym);render();
+  touchMonth(Y);render();
 }
 export function prevQ(){if(ui.q===2)ui.q=1;else{ui.q=2;ui.ym=addMonths(ui.ym,-1)}}
 export function nextQ(){if(ui.q===1)ui.q=2;else{ui.q=1;ui.ym=addMonths(ui.ym,1)}}
@@ -25,7 +26,7 @@ async function resetAll(){
   if(cloudAdapter.active){try{await cloudAdapter.wipe()}catch(e){toast('No se pudo borrar en la nube')}}
 }
 export const ACT={
-  go(el){ui.route=el.dataset.r;render();window.scrollTo(0,0)},
+  go(el){ui.route=el.dataset.r;if(ui.route==='resumen'){const d=new Date();ui.ym=ymOf(d);ui.q=d.getDate()<=15?1:2}render();window.scrollTo(0,0)},
   'go-gastos'(){ui.gym=ui.ym;ui.route='gastos';render();window.scrollTo(0,0)},
   seed:seedDemo,
   blank(){ui.wstep='ingreso';render()},
@@ -50,7 +51,8 @@ export const ACT={
   'q-prev'(){prevQ();render()},'q-next'(){nextQ();render()},
   'g-prev'(){ui.gym=addMonths(ui.gym,-1);render()},'g-next'(){ui.gym=addMonths(ui.gym,1);render()},
   'r-prev'(){ui.rym=addMonths(ui.rym,-1);render()},'r-next'(){ui.rym=addMonths(ui.rym,1);render()},
-  'toggle-alloc'(el,e){e.stopPropagation();toggleAlloc(el.dataset.id)},
+  'toggle-alloc'(el,e){e.stopPropagation();toggleAlloc(el.dataset.id,el.dataset.ym,el.dataset.q)},
+  'toggle-hide'(){setHidden(!privacy.hidden);render()},
   'edit-alloc'(el){allocForm(el.dataset.id)},
   'add-alloc'(){allocForm(null)},
   'copy-prev'(){

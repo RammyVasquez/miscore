@@ -7,7 +7,12 @@ export const round2=x=>Math.round((+x||0)*100)/100;
 export const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/[^0-9.,\-]/g,'').replace(',','.'));return isNaN(n)?0:n};
 export const MX0=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0});
 export const MX2=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2,maximumFractionDigits:2});
-export const money=n=>{n=+n||0;return Math.abs(n%1)<0.005?MX0.format(Math.round(n)):MX2.format(n)};
+// Modo privado: oculta todos los montos de las pantallas (se recuerda en este dispositivo)
+export const privacy = { hidden: false };
+try { privacy.hidden = localStorage.getItem('mf-hide') === '1'; } catch (e) {}
+export function setHidden(v) { privacy.hidden = !!v; try { localStorage.setItem('mf-hide', v ? '1' : '0'); } catch (e) {} }
+export const money=n=>{if(privacy.hidden)return '•••••';n=+n||0;return Math.abs(n%1)<0.005?MX0.format(Math.round(n)):MX2.format(n)};
+export const shortMoney=n=>{if(privacy.hidden)return '•';n=+n||0;const a=Math.abs(n);return (n<0?'-':'')+'$'+(a>=1000?(Math.round(a/100)/10).toString().replace(/\.0$/,'')+'k':Math.round(a))};
 export const pad=n=>String(n).padStart(2,'0');
 export const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 export const ymOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1);
@@ -37,7 +42,9 @@ export const ICONS={
   mas:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff:'<path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0112 6c6.5 0 10 6 10 6a17 17 0 01-3.2 3.9"/><path d="M6.6 6.7C3.9 8.4 2 12 2 12s3.5 7 10 7c1.4 0 2.7-.3 3.8-.8"/><path d="M9.9 9.9a3 3 0 004.2 4.2"/>'
 };
 export const ic=n=>'<svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+ICONS[n]+'</svg>';
 export const sum=(arr,f)=>arr.reduce((s,x)=>s+f(x),0);
