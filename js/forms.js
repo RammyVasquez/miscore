@@ -1,0 +1,130 @@
+// Formularios de alta y edición (sobres, movimientos, tarjetas, metas, fijos).
+import { uid8, round2, num, ymd, MESES, parseYM } from './util.js';
+import { S, touchCfg, touchMonth } from './state.js';
+import { getMonth, roMonth, getQ, txEffect, revertAlloc } from './logic.js';
+import { ui, drawSheet, openForm, closeSheet, askConfirm, toast, sheet } from './ui.js';
+import { render } from './render.js';
+
+export const cardOpts=()=>S.config.tarjetas.map(c=>[c.id,c.nombre]);
+export const medioOpts=()=>[['efectivo','Efectivo o débito']].concat(cardOpts());
+export const catOpts=()=>S.config.cats.map(c=>[c,c]);
+export function allocForm(id){
+  const q=getQ(ui.ym,ui.q),a=id?q.allocs.find(x=>x.id===id):null;
+  openForm({
+    title:a?'Editar sobre':'Nuevo sobre',
+    values:a?{nombre:a.nombre,kind:a.kind,ref:a.ref||'',cat:a.cat||S.config.cats[0],monto:a.monto||'',pct:a.pct||''}:{nombre:'',kind:'gasto',ref:'',cat:S.config.cats[0]||'Otros',monto:'',pct:''},
+    fields:[
+      {k:'nombre',label:'Nombre',req:true},
+      {k:'kind',label:'Tipo',type:'select',re:true,opts:[['gasto','Gasto con tope (mandado, salidas…)'],['tarjeta','Pago a tarjeta'],['meta','Ahorro o meta'],['diezmo','Diezmo'],['pago','Otro pago (renta, servicio…)']]},
+      {k:'ref',label:'Tarjeta',type:'select',opts:()=>[['','Elegir…']].concat(cardOpts()),when:v=>v.kind==='tarjeta'},
+      {k:'ref',label:'Meta',type:'select',opts:()=>[['','Elegir…']].concat(S.config.metas.map(m=>[m.id,m.nombre])),when:v=>v.kind==='meta'},
+      {k:'cat',label:'Categoría que cuenta contra este tope',type:'select',opts:catOpts,when:v=>v.kind==='gasto'},
+      {k:'monto',label:'Monto',type:'number'},
+      {k:'pct',label:'O porcentaje del ingreso',type:'number',hint:'Si pones un porcentaje, se usa en lugar del monto.'}
+    ],
+    onSubmit:o=>{
+      const d={nombre:o.nombre.trim(),kind:o.kind,ref:(o.kind==='tarjeta'||o.kind==='meta')?o.ref:'',cat:o.kind==='gasto'?o.cat:'',monto:o.monto,pct:o.pct>0?o.pct:0};
+      if(a)Object.assign(a,d);else q.allocs.push(Object.assign({id:uid8(),done:false},d));
+      touchMonth(ui.ym);render();
+    },
+    onDelete:a?()=>{revertAlloc(a);q.allocs=q.allocs.filter(x=>x.id!==a.id);touchMonth(ui.ym);closeSheet();render()}:null
+  });
+}
+export function txForm(id,ymHint,preset){
+  let old=null;
+  if(id){old=(roMonth(ymHint).tx||[]).find(t=>t.id===id)}
+  const today=ymd(new Date());
+  openForm({
+    title:old?'Editar movimiento':'Nuevo movimiento',
+    values:old?{tipo:old.tipo||'gasto',monto:old.monto,cat:old.cat,nota:old.nota||'',f:old.f,medio:old.medio||'efectivo'}:Object.assign({tipo:'gasto',monto:'',cat:S.config.cats[0]||'Otros',nota:'',f:today,medio:'efectivo'},preset||{}),
+    fields:[
+      {k:'tipo',label:'Tipo',type:'select',re:true,opts:[['gasto','Gasto'],['ingreso','Ingreso extra']]},
+      {k:'monto',label:'Monto',type:'number',req:true},
+      {k:'cat',label:'Categoría',type:'select',opts:catOpts,when:v=>v.tipo==='gasto'},
+      {k:'medio',label:'Se pagó con',type:'select',opts:medioOpts,when:v=>v.tipo==='gasto'},
+      {k:'nota',label:'Nota (opcional)'},
+      {k:'f',label:'Fecha',type:'date',req:true}
+    ],
+    onSubmit:o=>{
+      if(!(o.monto>0)){sheet.cur.err='El monto debe ser mayor a cero';drawSheet();return false}
+      if(old){const om=getMonth(ymHint);om.tx=om.tx.filter(t=>t.id!==old.id);txEffect(old,-1);touchMonth(ymHint)}
+      const t={id:old?old.id:uid8(),tipo:o.tipo,monto:round2(o.monto),cat:o.tipo==='ingreso'?'Ingreso extra':o.cat,nota:o.nota.trim(),f:o.f,medio:o.tipo==='ingreso'?'efectivo':o.medio};
+      const ym=t.f.slice(0,7);getMonth(ym).tx.push(t);txEffect(t,1);touchMonth(ym);render();toast(old?'Movimiento actualizado':'Movimiento guardado');
+    },
+    onDelete:old?()=>{const om=getMonth(ymHint);om.tx=om.tx.filter(t=>t.id!==old.id);txEffect(old,-1);touchMonth(ymHint);closeSheet();render()}:null
+  });
+}
+export const COLORS=[['#1D4ED8','Azul'],['#E0463A','Rojo'],['#13795B','Verde'],['#7C3AED','Morado'],['#D97706','Naranja'],['#334155','Gris']];
+export function cardForm(id){
+  const c=id?S.config.tarjetas.find(x=>x.id===id):null;
+  openForm({
+    title:c?'Editar tarjeta':'Nueva tarjeta',
+    values:c?{nombre:c.nombre,saldo:c.saldo,corte:c.corte,limite:c.limite,color:c.color||'#1D4ED8'}:{nombre:'',saldo:'',corte:'',limite:'',color:'#1D4ED8'},
+    fields:[
+      {k:'nombre',label:'Nombre',req:true},
+      {k:'saldo',label:'Saldo pendiente por pagar',type:'number'},
+      {k:'corte',label:'Día de corte (1 a 31)',type:'number',req:true},
+      {k:'limite',label:'Día límite de pago (1 a 31)',type:'number',req:true},
+      {k:'color',label:'Color',type:'select',opts:COLORS}
+    ],
+    onSubmit:o=>{
+      if(o.corte<1||o.corte>31||o.limite<1||o.limite>31){sheet.cur.err='Los días deben estar entre 1 y 31';drawSheet();return false}
+      const d={nombre:o.nombre.trim(),saldo:round2(o.saldo),corte:Math.round(o.corte),limite:Math.round(o.limite),color:o.color};
+      if(c)Object.assign(c,d);else S.config.tarjetas.push(Object.assign({id:uid8()},d));
+      touchCfg();render();
+    },
+    onDelete:c?()=>askConfirm('Se quitará la tarjeta '+c.nombre+'. Tus movimientos no se borran.','Eliminar tarjeta',()=>{S.config.tarjetas=S.config.tarjetas.filter(x=>x.id!==c.id);touchCfg();render()}):null
+  });
+}
+export function metaForm(id){
+  const m=id?S.config.metas.find(x=>x.id===id):null;
+  openForm({
+    title:m?'Editar meta':'Nueva meta',
+    values:m?{nombre:m.nombre,objetivo:m.objetivo||'',ahorrado:m.ahorrado||'',fecha:m.fecha||'',desglose:(m.desglose||[]).map(d=>d.n+': '+d.m).join('\n')}:{nombre:'',objetivo:'',ahorrado:'',fecha:'',desglose:''},
+    fields:[
+      {k:'nombre',label:'Nombre',req:true},
+      {k:'objetivo',label:'Monto objetivo',type:'number',hint:'Déjalo en 0 si es un fondo sin tope.'},
+      {k:'ahorrado',label:'Ahorrado hasta ahora',type:'number'},
+      {k:'fecha',label:'Fecha límite (opcional)',type:'date'},
+      {k:'desglose',label:'Desglose (opcional)',type:'textarea',hint:'Una línea por concepto, así: Hospital: 18500. Si lo llenas, el objetivo es la suma.'}
+    ],
+    onSubmit:o=>{
+      const des=o.desglose.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const i=l.lastIndexOf(':');return i>0?{n:l.slice(0,i).trim(),m:num(l.slice(i+1))}:{n:l,m:0}});
+      const d={nombre:o.nombre.trim(),objetivo:o.objetivo,ahorrado:round2(o.ahorrado),fecha:o.fecha||'',desglose:des};
+      if(m)Object.assign(m,d);else S.config.metas.push(Object.assign({id:uid8()},d));
+      touchCfg();render();
+    },
+    onDelete:m?()=>askConfirm('Se quitará la meta '+m.nombre+'.','Eliminar meta',()=>{S.config.metas=S.config.metas.filter(x=>x.id!==m.id);touchCfg();render()}):null
+  });
+}
+export function metaAport(id){
+  const m=S.config.metas.find(x=>x.id===id);if(!m)return;
+  openForm({title:'Aportar a '+m.nombre,values:{monto:''},fields:[{k:'monto',label:'Monto',type:'number',req:true}],submit:'Aportar',onSubmit:o=>{if(!(o.monto>0)){sheet.cur.err='El monto debe ser mayor a cero';drawSheet();return false}m.ahorrado=round2((+m.ahorrado||0)+o.monto);touchCfg();render();toast('Aportación registrada')}});
+}
+export function fijoForm(id){
+  const f=id?S.config.fijos.find(x=>x.id===id):null;
+  const mesTxt=MESES[parseYM(ui.fym).m-1];
+  openForm({
+    title:f?'Editar gasto':'Nuevo gasto recurrente',
+    values:f?{nombre:f.nombre,monto:f.monto,tipo:f.tipo||'fijo',medio:f.medio||'efectivo',cat:f.cat||S.config.cats[0],variable:f.variable?'1':'0',cada:String(f.cada||1),desde:f.desde||ui.fym,montoMes:(f.vals&&f.vals[ui.fym]!=null)?f.vals[ui.fym]:''}:{nombre:'',monto:'',tipo:'fijo',medio:'efectivo',cat:S.config.cats[0]||'Otros',variable:'0',cada:'1',desde:ui.fym,montoMes:''},
+    fields:[
+      {k:'nombre',label:'Nombre',req:true},
+      {k:'monto',label:'Monto habitual o estimado',type:'number',req:true},
+      {k:'variable',label:'¿El monto cambia?',type:'select',re:true,opts:[['0','No, es siempre igual'],['1','Sí, cambia cada vez (luz, gasolina…)']]},
+      {k:'montoMes',label:'Monto real de '+mesTxt+' (opcional)',type:'number',raw:true,hint:'Déjalo vacío para usar el estimado.',when:v=>v.variable==='1'},
+      {k:'cada',label:'¿Cada cuánto se paga?',type:'select',re:true,opts:[['1','Cada mes'],['2','Cada 2 meses (bimestral)'],['3','Cada 3 meses'],['6','Cada 6 meses'],['12','Una vez al año']]},
+      {k:'desde',label:'Mes de un pago',type:'month',hint:'Sirve para saber en qué meses toca pagarlo.',when:v=>v.cada!=='1'},
+      {k:'tipo',label:'Tipo',type:'select',opts:[['fijo','Gasto fijo'],['sub','Suscripción o gasto hormiga']]},
+      {k:'medio',label:'Se paga con',type:'select',opts:medioOpts},
+      {k:'cat',label:'Categoría',type:'select',opts:catOpts}
+    ],
+    onSubmit:o=>{
+      const vals=Object.assign({},f&&f.vals);
+      if(o.variable==='1'&&String(o.montoMes==null?'':o.montoMes).trim()!=='')vals[ui.fym]=num(o.montoMes);else delete vals[ui.fym];
+      const d={nombre:o.nombre.trim(),monto:o.monto,tipo:o.tipo,medio:o.medio,cat:o.cat,variable:o.variable==='1',cada:+o.cada||1,desde:(+o.cada>1)?(o.desde||ui.fym):'',vals:vals};
+      if(f)Object.assign(f,d);else S.config.fijos.push(Object.assign({id:uid8()},d));
+      touchCfg();render();
+    },
+    onDelete:f?()=>{S.config.fijos=S.config.fijos.filter(x=>x.id!==f.id);touchCfg();closeSheet();render()}:null
+  });
+}
