@@ -10,6 +10,7 @@ export const cloudAdapter = { active: false, save: async () => {}, remove: async
 
 const LS = 'mis-finanzas-v1';
 const LS_META = 'mis-finanzas-meta';
+const LS_DIRTY = 'mis-finanzas-dirty';
 export const S = { config: null, months: {} };
 export const dirty = { cfg: false, months: new Set() };
 export const typing = () => { const a = document.activeElement; return !!(a && a.matches && a.matches('#view input,#view select,#view textarea')); };
@@ -18,9 +19,19 @@ export const blankConfig = () => ({ onboarded: false, demo: false, ingresoQ: 0, 
 export function loadLocal() {
   try {
     const r = localStorage.getItem(LS);
-    if (r) { const o = JSON.parse(r); S.config = Object.assign(blankConfig(), o.config); S.months = o.months || {}; return; }
+    if (r) { const o = JSON.parse(r); S.config = Object.assign(blankConfig(), o.config); S.months = o.months || {}; restoreDirty(); return; }
   } catch (e) {}
   S.config = blankConfig(); S.months = {};
+}
+// Qué documentos tienen cambios sin enviar a la nube (se conserva aunque cierres la app)
+function restoreDirty() {
+  try { const d = JSON.parse(localStorage.getItem(LS_DIRTY) || 'null'); if (d) { dirty.cfg = !!d.cfg; (d.months || []).forEach(m => dirty.months.add(m)); } } catch (e) {}
+}
+export function saveDirty() {
+  try {
+    if (!dirty.cfg && dirty.months.size === 0) localStorage.removeItem(LS_DIRTY);
+    else localStorage.setItem(LS_DIRTY, JSON.stringify({ cfg: dirty.cfg, months: Array.from(dirty.months) }));
+  } catch (e) {}
 }
 export function saveLocal() { try { localStorage.setItem(LS, JSON.stringify({ config: S.config, months: S.months })); } catch (e) {} }
 
@@ -29,7 +40,7 @@ export function getMeta() { try { return JSON.parse(localStorage.getItem(LS_META
 export function setMeta(patch) { try { localStorage.setItem(LS_META, JSON.stringify(Object.assign(getMeta(), patch))); } catch (e) {} }
 
 let pt = null, retryT = null;
-export function schedulePersist() { saveLocal(); clearTimeout(pt); pt = setTimeout(persist, 500); }
+export function schedulePersist() { saveLocal(); saveDirty(); clearTimeout(pt); pt = setTimeout(persist, 500); }
 export const touchCfg = () => { dirty.cfg = true; schedulePersist(); };
 export const touchMonth = ym => { dirty.months.add(ym); schedulePersist(); };
 
@@ -55,6 +66,7 @@ export async function persist() {
     retryT = setTimeout(persist, 20000);
   } finally {
     rt.pushing = false;
+    saveDirty();
   }
 }
 export function setStatus(m) {

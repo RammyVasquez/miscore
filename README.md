@@ -111,6 +111,13 @@ Se abre a pantalla completa, con su ícono, y funciona sin conexión gracias a `
 - Como dueño del proyecto puedes ver los datos en el panel de Supabase (**Table Editor > finanzas_docs**). Están protegidos por RLS, pero no cifrados de extremo a extremo.
 - Nota: en el plan gratuito Supabase pausa los proyectos sin actividad durante varios días. Si pasa, reactívalo desde su panel; mientras tanto la app sigue funcionando en local con lo que tiene guardado.
 
+### Sesión y contraseña
+
+- El inicio de sesión es un formulario real: el navegador (Opera, Chrome, Safari…) te ofrece **guardar la contraseña** y la autocompleta. Acepta la oferta la primera vez. La app **nunca** guarda tu contraseña; solo recuerda tu correo para escribirlo menos.
+- La sesión se guarda en el dispositivo y se renueva sola, así que no tendrías que volver a entrar. Si aun así se cierra (por ejemplo porque el navegador borra los datos del sitio al cerrarse, o por usar una ventana privada), la app **no borra tus datos**: muestra un aviso, tu correo ya viene escrito y, en navegadores basados en Chrome, intenta volver a entrar sola con la contraseña guardada.
+- Lo que cambies sin sesión o sin internet queda marcado como pendiente (incluso si cierras la app) y se envía al volver a entrar con la **misma cuenta**, sin preguntarte nada.
+- **Borrar todo** quita los datos (también los de la cuenta y los de tus otros dispositivos) pero **no cierra tu sesión**. **Cerrar sesión** sí quita los datos de ese dispositivo.
+
 ### Actualizar la librería de Supabase (opcional)
 
 `js/vendor/supabase.js` es `@supabase/supabase-js` empaquetado con esbuild para que la app no dependa de ningún CDN y abra sin conexión. Para actualizarlo:

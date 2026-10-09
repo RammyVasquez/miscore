@@ -2,11 +2,14 @@
 // Si config.js está vacío, nada de esto se activa y la app funciona solo en el dispositivo.
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { stable } from './util.js';
-import { S, dirty, rt, hooks, blankConfig, saveLocal, persist, setStatus, cloudAdapter, applyRemoteDocs, applyRemoteSnapshot } from './state.js';
+import { S, dirty, rt, hooks, blankConfig, saveLocal, saveDirty, persist, setStatus, cloudAdapter, applyRemoteDocs, applyRemoteSnapshot } from './state.js';
 import { openForm, closeSheet } from './ui.js';
 
 export const cloudConfigured = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
-export const cloud = { client: null, user: null, channel: null, started: false };
+export const cloud = { client: null, user: null, channel: null, started: false, sessionLost: false, expectedOut: false };
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const lsDel = k => { try { localStorage.removeItem(k); } catch (e) {} };
 const TABLE = 'finanzas_docs';
 
 // ---- adaptador que usa state.js para guardar ----
@@ -39,13 +42,31 @@ export async function initCloud() {
   } catch (e) { setStatus('local'); }
 }
 
+// Si la sesión se perdió sola, intenta volver a entrar con la contraseña que guardó el navegador
+async function trySilentSignIn() {
+  try {
+    if (!(window.PasswordCredential && navigator.credentials && navigator.credentials.get)) return false;
+    const cred = await navigator.credentials.get({ password: true, mediation: 'silent' });
+    if (cred && cred.id && cred.password) { await signInPassword(cred.id, cred.password); return true; }
+  } catch (e) {}
+  return false;
+}
+
 async function handleAuth(evt, session) {
   if (evt === 'PASSWORD_RECOVERY') hooks.newPassword && hooks.newPassword();
   if (session && session.user) {
+    lsSet('mf-account', '1'); cloud.sessionLost = false;
     if (!cloud.user || cloud.user.id !== session.user.id) { cloud.user = session.user; await startSync(); }
     else cloud.user = session.user;
-  } else if (evt === 'SIGNED_OUT') {
-    stopSync(); setStatus('local'); hooks.render();
+  } else if (evt === 'SIGNED_OUT' || evt === 'INITIAL_SESSION') {
+    if (evt === 'SIGNED_OUT') { stopSync(); setStatus('local'); }
+    const hadAccount = lsGet('mf-account') === '1';
+    if (hadAccount && !cloud.expectedOut) {
+      // La sesión se cerró sola (no la cerró la persona): se conservan los datos y se avisa
+      const ok = await trySilentSignIn();
+      if (!ok) { cloud.sessionLost = true; hooks.render(); }
+    } else if (evt === 'SIGNED_OUT') hooks.render();
+    cloud.expectedOut = false;
   }
 }
 
@@ -62,6 +83,7 @@ async function startSync() {
     const docs = await pullRows();
     const ok = await reconcile(docs);
     if (!ok) return;
+    lsSet('mf-uid', cloud.user.id);
     cloudAdapter.active = true; cloud.started = true;
     subscribeRealtime();
     setStatus('cloud'); hooks.render();
@@ -103,14 +125,14 @@ function bindCloudEvents() {
 }
 
 // ---- primer encuentro entre lo de este dispositivo y lo de la cuenta ----
-function markAllDirty() { dirty.cfg = true; Object.keys(S.months).forEach(k => dirty.months.add(k)); }
+function markAllDirty() { dirty.cfg = true; Object.keys(S.months).forEach(k => dirty.months.add(k)); saveDirty(); }
 function replaceLocalWith(docs) {
   const cfg = docs.find(d => d.id === 'config');
   S.config = Object.assign(blankConfig(), cfg ? cfg.data : {});
   S.months = {};
   docs.forEach(d => { if (d.id.indexOf('m-') === 0) S.months[d.id.slice(2)] = d.data; });
   dirty.cfg = false; dirty.months.clear();
-  saveLocal();
+  saveLocal(); saveDirty();
 }
 function sameAsLocal(docs) {
   const cfg = docs.find(d => d.id === 'config');
@@ -125,6 +147,8 @@ async function reconcile(docs) {
   if (!hasRemote) { if (hasLocal) markAllDirty(); return true; }
   if (!hasLocal) { replaceLocalWith(docs); return true; }
   if (sameAsLocal(docs)) return true;
+  // Misma cuenta que ya usaba este dispositivo: se combinan (lo pendiente de aquí gana) y no se pregunta nada
+  if (lsGet('mf-uid') === cloud.user.id) { applyRemoteSnapshot(docs); return true; }
   const choice = await askWhich();
   if (choice === 'cloud') { replaceLocalWith(docs); return true; }
   if (choice === 'local') {
@@ -174,11 +198,12 @@ export async function setNewPassword(password) {
 // Sube lo pendiente, cierra la sesión y deja el dispositivo limpio (todo sigue en la cuenta)
 export async function signOutAndClear() {
   try { await persist(); } catch (e) {}
+  cloud.expectedOut = true; lsSet('mf-account', '0'); lsDel('mf-uid');
   if (cloud.client) { try { await cloud.client.auth.signOut(); } catch (e) {} }
   stopSync();
   S.config = blankConfig(); S.months = {};
   dirty.cfg = false; dirty.months.clear();
-  saveLocal(); setStatus('local');
+  saveLocal(); saveDirty(); setStatus('local');
 }
 export function friendly(e) {
   const m = String((e && (e.message || e.error_description)) || e || '').toLowerCase();

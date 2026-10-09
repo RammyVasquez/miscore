@@ -1,7 +1,7 @@
 // Acciones de los botones (data-act), cambios de campos y eventos globales.
-import { $, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean, privacy, setHidden } from './util.js';
+import { $, ic, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean, privacy, setHidden } from './util.js';
 import { S, dirty, typing, blankConfig, saveLocal, schedulePersist, touchCfg, touchMonth, rt, cloudAdapter, setMeta } from './state.js';
-import { syncNow, signOutAndClear } from './cloud.js';
+import { cloud, syncNow, signOutAndClear } from './cloud.js';
 import { authForm } from './auth.js';
 import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc } from './logic.js';
 import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet } from './ui.js';
@@ -39,6 +39,12 @@ export const ACT={
   },
   'clear-demo'(){askConfirm('Se quitará la información de ejemplo y empezarás con tus propios datos.','Empezar desde cero',()=>{resetAll().then(()=>{ui.wstep='ask';ui.route='resumen';render()})})},
   login(){authForm('login')},
+  'toggle-pw'(el){
+    const i=document.getElementById(el.dataset.for);if(!i)return;
+    const show=i.type==='password';i.type=show?'text':'password';
+    el.innerHTML=ic(show?'eyeoff':'eye');el.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');
+  },
+  'w-amount'(el){const i=$('#wIngreso');if(i){i.value=el.dataset.v;i.focus()}},
   signup(){authForm('signup')},
   'sync-now'(){toast('Sincronizando…');syncNow().then(()=>render())},
   logout(){
@@ -94,7 +100,7 @@ export const ACT={
     try{const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);setMeta({lastBackup:Date.now()});render()}catch(e){toast('No se pudo descargar el respaldo')}
   },
   import(){$('#importfile').click()},
-  wipe(){askConfirm('Se borrarán tus tarjetas, quincenas, movimientos y metas'+(cloudAdapter.active?', también de tu cuenta y de tus otros dispositivos':'')+'. Descarga un respaldo antes si quieres conservarlos.','Borrar todo',async()=>{await resetAll();ui.wstep='ask';ui.route='resumen';render()})}
+  wipe(){askConfirm('Se borrarán tus tarjetas, quincenas, movimientos y metas'+(cloudAdapter.active?', también de tu cuenta y de tus otros dispositivos':'')+'. Descarga un respaldo antes si quieres conservarlos.'+(cloud.user?' Tu sesión no se cierra.':''),'Borrar todo',async()=>{await resetAll();ui.wstep='ask';ui.route='resumen';render()})}
 };
 export const CHG={
   'q-ingreso'(el){const q=getQ(ui.ym,ui.q);q.ingreso=num(el.value);touchMonth(ui.ym);render()},
@@ -108,6 +114,7 @@ export function bindEvents(){
     const el=e.target.closest('[data-act]');if(!el)return;
     const f=ACT[el.dataset.act];if(f){f(el,e)}
   });
+  document.addEventListener('submit',e=>{e.preventDefault();if(sheet.cur&&sheet.cur.cfg.form&&!sheet.cur.busy)submitSheet()});
   document.addEventListener('change',e=>{
     const el=e.target.closest('[data-chg]');if(!el)return;
     const f=CHG[el.dataset.chg];if(f)f(el);
