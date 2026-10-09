@@ -100,3 +100,38 @@ export function barsChart(data) {
   });
   return s + '</svg><div class="legend"><span><i style="background:var(--pri)"></i>Ingresos</span><span><i style="background:var(--bad)"></i>Gastos</span><span><i style="background:var(--ok)"></i>Ahorro</span></div>';
 }
+
+// Libre mes por mes (barras; en rojo si queda en negativo): data = [{label, val, cur}]
+export function libreBars(data) {
+  const W = 360, H = 210, pl = 44, pr = 6, pt = 14, pb = 28;
+  const vals = data.map(d => d.val), mx = Math.max.apply(null, vals.concat([1])), mn = Math.min.apply(null, vals.concat([0]));
+  const top = niceStep(mx / 2) * 2, bot = mn < 0 ? -niceStep(-mn / 2) * 2 : 0, span = (top - bot) || 1;
+  const y = v => pt + (H - pt - pb) * (top - v) / span, y0 = y(0);
+  const gw = (W - pl - pr) / data.length, bw = Math.min(20, gw - 6);
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="ch" role="img" aria-label="Tu libre mes por mes durante el próximo año">';
+  [top, top / 2, 0].concat(bot < 0 ? [bot] : []).forEach(v => {
+    s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" class="' + (v === 0 ? 'ax' : 'gl') + '"/>'
+      + '<text x="' + (pl - 6) + '" y="' + (y(v) + 4).toFixed(1) + '" text-anchor="end" class="ax-t">' + (v === 0 ? '0' : shortMoney(v)) + '</text>';
+  });
+  data.forEach((d, i) => {
+    const x = pl + i * gw + (gw - bw) / 2, yv = y(d.val), h = Math.max(Math.abs(yv - y0), d.val ? 2 : 0);
+    if (d.val) s += '<rect class="' + (d.val >= 0 ? 'b-ok' : 'b-bad') + '" x="' + x.toFixed(1) + '" y="' + Math.min(yv, y0).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="3"/>';
+    s += '<text x="' + (pl + i * gw + gw / 2).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" class="ax-t' + (d.cur ? ' cur' : '') + '">' + esc(d.label) + '</text>';
+  });
+  return s + '</svg>';
+}
+
+// Cuánto llevas ahorrado mes a mes hasta juntar el precio: o = { precio, ahorrado, aporte, meses, fin }
+export function saveChart(o) {
+  const N = Math.max(1, Math.min(o.meses, 36)), W = 360, H = 180, pl = 10, pr = 10, pt = 16, pb = 26;
+  const ymax = o.precio * 1.1, X = i => pl + i / N * (W - pl - pr), Y = v => H - pb - (v / ymax) * (H - pt - pb);
+  let pts = '';
+  for (let i = 0; i <= N; i++) pts += (i ? ' ' : '') + X(i).toFixed(1) + ',' + Y(Math.min(o.precio, o.ahorrado + o.aporte * i)).toFixed(1);
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="ch" role="img" aria-label="Lo que irías ahorrando mes a mes hasta juntar el precio">';
+  s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + (H - pb) + '" y2="' + (H - pb) + '" class="ax"/>';
+  s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(o.precio).toFixed(1) + '" y2="' + Y(o.precio).toFixed(1) + '" class="pc-cap"/><text x="' + (W - pr) + '" y="' + (Y(o.precio) - 5).toFixed(1) + '" text-anchor="end" class="ax-t">precio</text>';
+  s += '<polygon points="' + X(0).toFixed(1) + ',' + (H - pb) + ' ' + pts + ' ' + X(N).toFixed(1) + ',' + (H - pb) + '" class="pc-area"/><polyline points="' + pts + '" class="pc-line"/>';
+  s += '<circle cx="' + X(N).toFixed(1) + '" cy="' + Y(o.precio).toFixed(1) + '" r="5" class="pc-dot"/>';
+  s += '<text x="' + pl + '" y="' + (H - 8) + '" class="ax-t">hoy</text><text x="' + (W - pr) + '" y="' + (H - 8) + '" text-anchor="end" class="ax-t">' + esc(o.fin || '') + '</text>';
+  return s + '</svg>';
+}

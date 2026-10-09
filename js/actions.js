@@ -1,10 +1,11 @@
 // Acciones de los botones (data-act), cambios de campos y eventos globales.
-import { $, ic, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean, privacy, setHidden, sum, money } from './util.js';
+import { $, ic, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean, privacy, setHidden, sum, money, pad, lastDay } from './util.js';
 import { S, dirty, typing, blankConfig, saveLocal, schedulePersist, touchCfg, touchMonth, rt, cloudAdapter, setMeta } from './state.js';
 import { cloud, syncNow, signOutAndClear } from './cloud.js';
 import { authForm } from './auth.js';
 import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc, fijosQ, esDirecto } from './logic.js';
-import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet } from './ui.js';
+import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet, saveProy } from './ui.js';
+import { proyRefresh } from './views/proyecciones.js';
 import { render } from './render.js';
 import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm, msiForm, recForm, valeForm } from './forms.js';
 import { seedDemo } from './seed.js';
@@ -58,6 +59,15 @@ export const ACT={
   'g-prev'(){ui.gym=addMonths(ui.gym,-1);render()},'g-next'(){ui.gym=addMonths(ui.gym,1);render()},
   'r-prev'(){ui.rym=addMonths(ui.rym,-1);render()},'r-next'(){ui.rym=addMonths(ui.rym,1);render()},
   'toggle-alloc'(el,e){e.stopPropagation();toggleAlloc(el.dataset.id,el.dataset.ym,el.dataset.q)},
+  'proy-base'(el){ui.proy.base=el.dataset.v;saveProy();render()},
+  'proy-reset'(){Object.keys(ui.proy).forEach(k=>{ui.proy[k]=''});saveProy();render();toast('Listo, empiezas de cero')},
+  'proy-meta'(){
+    const p=ui.proy,precio=num(p.precio);
+    if(!(precio>0)){toast('Escribe primero el precio');return}
+    const f=p.fecha?p.fecha+'-'+pad(lastDay(+p.fecha.slice(0,4),+p.fecha.slice(5,7))):'';
+    S.config.metas.push({id:uid8(),nombre:(p.nombre||'').trim()||'Mi compra',objetivo:precio,ahorrado:round2(num(p.ahorrado)),fecha:f,desglose:[]});
+    touchCfg();toast('Meta creada. La puedes ver en Metas.');ui.route='metas';render();window.scrollTo(0,0);
+  },
   'toggle-hide'(){setHidden(!privacy.hidden);render()},
   'edit-alloc'(el){allocForm(el.dataset.id)},
   'add-alloc'(){allocForm(null)},
@@ -135,6 +145,8 @@ export function bindEvents(){
     const el=e.target.closest('[data-act]');if(!el)return;
     const f=ACT[el.dataset.act];if(f){f(el,e)}
   });
+  const proyIn=e=>{const el=e.target.closest&&e.target.closest('[data-proy]');if(!el)return;ui.proy[el.dataset.proy]=el.value;saveProy();proyRefresh()};
+  document.addEventListener('input',proyIn);document.addEventListener('change',proyIn);
   document.addEventListener('submit',e=>{e.preventDefault();if(sheet.cur&&sheet.cur.cfg.form&&!sheet.cur.busy)submitSheet()});
   document.addEventListener('change',e=>{
     const el=e.target.closest('[data-chg]');if(!el)return;

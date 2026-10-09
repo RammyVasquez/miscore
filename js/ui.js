@@ -4,11 +4,13 @@ import { rt, hooks } from './state.js';
 
 export const sheet={cur:null};
 const now0=new Date();
-export const ui={route:'resumen',wstep:'ask',fym:ymOf(now0),ym:ymOf(now0),q:now0.getDate()<=15?1:2,gym:ymOf(now0),rym:ymOf(now0)};
-export const NAV=[['resumen','Resumen'],['quincena','Quincena'],['gastos','Gastos'],['tarjetas','Tarjetas'],['vales','Vales'],['metas','Metas'],['fijos','Fijos'],['reportes','Reportes'],['ajustes','Ajustes']];
+let _proy={};try{_proy=JSON.parse(localStorage.getItem('mf-proy')||'{}')}catch(e){}
+export const ui={proy:Object.assign({base:'',custom:'',nombre:'',precio:'',ahorrado:'',aporte:'',fecha:'',tasa:'',rentaAct:'',rentaNueva:'',cambioIng:'',otroGasto:''},_proy),route:'resumen',wstep:'ask',fym:ymOf(now0),ym:ymOf(now0),q:now0.getDate()<=15?1:2,gym:ymOf(now0),rym:ymOf(now0)};
+export function saveProy(){try{localStorage.setItem('mf-proy',JSON.stringify(ui.proy))}catch(e){}}
+export const NAV=[['resumen','Resumen'],['quincena','Quincena'],['gastos','Gastos'],['tarjetas','Tarjetas'],['vales','Vales'],['metas','Metas'],['fijos','Fijos'],['reportes','Reportes'],['proyecciones','Proyecciones'],['ajustes','Ajustes']];
 export const TABS=[['resumen','Resumen'],['quincena','Quincena'],['gastos','Gastos'],['tarjetas','Tarjetas'],['mas','Más']];
 export const FAB_ROUTES=['resumen','quincena','gastos'];
-export const TITLES={resumen:'Resumen',quincena:'Quincena',gastos:'Gastos',tarjetas:'Tarjetas',vales:'Vales',metas:'Metas',fijos:'Fijos y suscripciones',reportes:'Reportes',ajustes:'Ajustes',mas:'Más'};
+export const TITLES={resumen:'Resumen',quincena:'Quincena',gastos:'Gastos',tarjetas:'Tarjetas',vales:'Vales',metas:'Metas',fijos:'Fijos y suscripciones',reportes:'Reportes',proyecciones:'Proyecciones',ajustes:'Ajustes',mas:'Más'};
 export function fieldHTML(f,v){
   const id='f_'+f.k,re=f.re?' data-re="1"':'',nm=' name="'+f.k+'"';let ctl;
   if(f.type==='select'){const o=typeof f.opts==='function'?f.opts():f.opts;ctl='<select id="'+id+'"'+nm+' data-f="'+f.k+'"'+re+'>'+o.map(x=>'<option value="'+esc(x[0])+'"'+(String(v)===String(x[0])?' selected':'')+'>'+esc(x[1])+'</option>').join('')+'</select>'}

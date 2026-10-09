@@ -129,3 +129,37 @@ export const valeGastoMes=(v,ym)=>sum(valeTx(v.id).filter(t=>t.f.slice(0,7)===ym
 
 // ---- Apartados que ya existen con el mismo nombre que un gasto fijo (para no contarlos dos veces) ----
 export const enApartados=(ym,n,nombre)=>{const q=roMonth(ym)['q'+n];return !!q&&q.allocs.some(a=>norm(a.nombre)===norm(nombre))};
+
+// ---- Proyecciones (¿qué pasaría si…?). Nada de esto modifica tus datos. ----
+// Sueldo de las dos quincenas del mes + lo que se repite (bono)
+export function ingresoMensual(ym) {
+  const mo = roMonth(ym), b = +S.config.ingresoQ || 0;
+  const a = (mo.q1 && +mo.q1.ingreso) || b, c = (mo.q2 && +mo.q2.ingreso) || b;
+  return { sueldo: round2(a + c), extra: round2(sum(recsQ(ym, 1), x => x.m) + sum(recsQ(ym, 2), x => x.m)) };
+}
+const esValeId = id => (S.config.vales || []).some(v => v.id === id);
+// Gastos fijos del mes que salen del sueldo (los que se pagan con vales no cuentan)
+export const fijosDeSueldo = ym => round2(sum(S.config.fijos.filter(f => !esValeId(f.medio)), f => fijoMonto(f, ym)));
+export const msiTotalMes = ym => round2(sum(S.config.msi || [], m => { const i = msiInfo(m, ym); return i.estado === 'activa' ? i.monto : 0; }));
+// Lo que sobra después de tus apartados de las dos quincenas
+export function planLibreMes(ym) { let s = 0; [1, 2].forEach(n => { const r = qSummary(ym, n); s += r.ingreso - r.asignado; }); return round2(s); }
+const esRenta = nombre => norm(nombre).indexOf('renta') >= 0;
+export const rentaApartados = ym => round2([1, 2].reduce((s, n) => { const q = getQ(ym, n), base = qBase(ym, n); return s + sum(q.allocs.filter(a => esRenta(a.nombre)), a => allocMonto(a, base)); }, 0));
+export const rentaFijos = ym => round2(sum(S.config.fijos.filter(f => esRenta(f.nombre)), f => fijoMonto(f, ym)));
+// Mensualidad de una compra a meses (tasa anual en %; 0 = meses sin intereses)
+export function pmt(P, tasaAnual, n) { const r = (+tasaAnual || 0) / 100 / 12; return round2(r > 0 ? P * r / (1 - Math.pow(1 + r, -n)) : P / n); }
+// Sueldo − gastos fijos − mensualidades − renta, mes por mes
+export function serieLibre(ym0, n) {
+  const rA = rentaApartados(ym0), rF = rentaFijos(ym0), extraRenta = rF > 0 ? 0 : rA, out = [];
+  for (let i = 0; i < n; i++) {
+    const ym = addMonths(ym0, i), ing = ingresoMensual(ym);
+    out.push({ ym: ym, val: round2(ing.sueldo + ing.extra - fijosDeSueldo(ym) - msiTotalMes(ym) - extraRenta) });
+  }
+  return out;
+}
+// Compras a meses que terminan pronto (liberan dinero al mes siguiente)
+export function msiLiberan(ym0, horizonte) {
+  return (S.config.msi || []).map(m => { const i = msiInfo(m, ym0); return { nombre: m.nombre, mes: addMonths(i.fin, 1), monto: i.monto, estado: i.estado }; })
+    .filter(x => x.estado === 'activa' && monthIdx(x.mes) - monthIdx(ym0) <= horizonte)
+    .sort((a, b) => a.mes.localeCompare(b.mes));
+}
