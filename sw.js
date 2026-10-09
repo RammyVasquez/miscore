@@ -1,7 +1,7 @@
 // Service worker: la app abre sin conexión.
 // Estrategia: red primero (siempre ves la última versión) y, si no hay internet, lo guardado.
 // Sube el número de VERSION si cambias la lista de archivos.
-const VERSION = 'miscore-v1';
+const VERSION = 'miscore-v3';
 const SHELL = [
   "./",
   "index.html",
@@ -11,7 +11,10 @@ const SHELL = [
   "icons/icon-512.png",
   "icons/favicon.svg",
   "js/actions.js",
+  "js/auth.js",
+  "js/cloud.js",
   "js/components.js",
+  "js/config.js",
   "js/forms.js",
   "js/logic.js",
   "js/main.js",
@@ -20,6 +23,7 @@ const SHELL = [
   "js/state.js",
   "js/ui.js",
   "js/util.js",
+  "js/vendor/supabase.js",
   "js/views/ajustes.js",
   "js/views/fijos.js",
   "js/views/gastos.js",

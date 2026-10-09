@@ -155,3 +155,8 @@ input,select,textarea{font-size:16px}
   .btn.sm{min-height:38px}
   .hero{border-radius:26px}
 }
+.link{background:none;border:0;color:var(--pri);font-weight:700;padding:6px 2px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.sheet-links{display:flex;flex-wrap:wrap;gap:2px 18px;margin:0 0 10px}
+.okmsg{color:var(--ok);font-weight:600;margin:4px 0 8px}
+.btn[disabled]{opacity:.6;pointer-events:none}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9em;background:var(--surf2);border:1px solid var(--line);border-radius:6px;padding:1px 5px}

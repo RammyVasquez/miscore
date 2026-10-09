@@ -1,6 +1,8 @@
 // Acciones de los botones (data-act), cambios de campos y eventos globales.
 import { $, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean } from './util.js';
-import { S, dirty, DB, typing, blankConfig, saveLocal, schedulePersist, touchCfg, touchMonth, rt } from './state.js';
+import { S, dirty, typing, blankConfig, saveLocal, schedulePersist, touchCfg, touchMonth, rt, cloudAdapter, setMeta } from './state.js';
+import { syncNow, signOutAndClear } from './cloud.js';
+import { authForm } from './auth.js';
 import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc } from './logic.js';
 import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet } from './ui.js';
 import { render } from './render.js';
@@ -19,9 +21,8 @@ export function toggleAlloc(id){
 export function prevQ(){if(ui.q===2)ui.q=1;else{ui.q=2;ui.ym=addMonths(ui.ym,-1)}}
 export function nextQ(){if(ui.q===1)ui.q=2;else{ui.q=1;ui.ym=addMonths(ui.ym,1)}}
 async function resetAll(){
-  const keys=Object.keys(S.months);
   S.config=blankConfig();S.months={};dirty.cfg=false;dirty.months.clear();saveLocal();
-  if(DB.db){try{await DB.db.doc(DB.base+'/config').set(clean(S.config));for(const k of keys){try{await DB.db.doc(DB.base+'/m-'+k).delete()}catch(e){}}}catch(e){}}
+  if(cloudAdapter.active){try{await cloudAdapter.wipe()}catch(e){toast('No se pudo borrar en la nube')}}
 }
 export const ACT={
   go(el){ui.route=el.dataset.r;render();window.scrollTo(0,0)},
@@ -36,6 +37,14 @@ export const ACT={
     ui.route='resumen';touchCfg();render();
   },
   'clear-demo'(){askConfirm('Se quitará la información de ejemplo y empezarás con tus propios datos.','Empezar desde cero',()=>{resetAll().then(()=>{ui.wstep='ask';ui.route='resumen';render()})})},
+  login(){authForm('login')},
+  signup(){authForm('signup')},
+  'sync-now'(){toast('Sincronizando…');syncNow().then(()=>render())},
+  logout(){
+    const pend=dirty.cfg||dirty.months.size>0;
+    askConfirm(pend?'Tienes cambios que todavía no se sincronizan y se perderían. ¿Cerrar sesión de todos modos?':'Se cerrará tu sesión y se quitarán los datos de este dispositivo. Siguen guardados en tu cuenta.','Cerrar sesión',()=>{signOutAndClear().then(()=>{ui.wstep='ask';ui.route='resumen';render()})});
+  },
+  'remind-later'(){setMeta({snoozeUntil:Date.now()+3*864e5});render()},
   'hide-demo'(){S.config.demo=false;touchCfg();render()},
   install(){const e=rt.installEvt;if(!e)return;e.prompt();Promise.resolve(e.userChoice).finally(()=>{rt.installEvt=null;render()})},
   'q-prev'(){prevQ();render()},'q-next'(){nextQ();render()},
@@ -72,16 +81,18 @@ export const ACT={
       onSubmit:o=>{f.vals=f.vals||{};if(String(o.monto==null?'':o.monto).trim()==='')delete f.vals[ui.fym];else f.vals[ui.fym]=num(o.monto);touchCfg();render()}});
   },
   close(){closeSheet()},
-  'sheet-submit'(){if(sheet.cur)submitSheet()},
+  'sheet-submit'(){if(sheet.cur&&!sheet.cur.busy)submitSheet()},
+  'sheet-cancel'(){const c=sheet.cur&&sheet.cur.cfg;if(c&&c.onCancel)c.onCancel();closeSheet()},
+  'sheet-link'(el){const c=sheet.cur&&sheet.cur.cfg,l=c&&c.links&&c.links[+el.dataset.i];if(l)l.fn()},
   'sheet-delete'(){if(sheet.cur&&sheet.cur.cfg.onDelete)sheet.cur.cfg.onDelete()},
   async export(){
     const data=JSON.stringify({version:1,config:S.config,months:S.months},null,2),fn='mis-finanzas-'+ymd(new Date())+'.json';
     let dl=null;try{if(window.claude&&window.claude.use)dl=await claude.use('downloads')}catch(e){}
-    if(dl){try{await dl.save({filename:fn,data:data})}catch(e){if(!e||e.code!=='declined')toast('No se pudo descargar el respaldo')}return}
-    try{const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}catch(e){toast('No se pudo descargar el respaldo')}
+    if(dl){try{await dl.save({filename:fn,data:data});setMeta({lastBackup:Date.now()});render()}catch(e){if(!e||e.code!=='declined')toast('No se pudo descargar el respaldo')}return}
+    try{const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);setMeta({lastBackup:Date.now()});render()}catch(e){toast('No se pudo descargar el respaldo')}
   },
   import(){$('#importfile').click()},
-  wipe(){askConfirm('Se borrarán tus tarjetas, quincenas, movimientos y metas. Descarga un respaldo antes si quieres conservarlos.','Borrar todo',async()=>{await resetAll();ui.wstep='ask';ui.route='resumen';render()})}
+  wipe(){askConfirm('Se borrarán tus tarjetas, quincenas, movimientos y metas'+(cloudAdapter.active?', también de tu cuenta y de tus otros dispositivos':'')+'. Descarga un respaldo antes si quieres conservarlos.','Borrar todo',async()=>{await resetAll();ui.wstep='ask';ui.route='resumen';render()})}
 };
 export const CHG={
   'q-ingreso'(el){const q=getQ(ui.ym,ui.q);q.ingreso=num(el.value);touchMonth(ui.ym);render()},
@@ -100,7 +111,7 @@ export function bindEvents(){
     const f=CHG[el.dataset.chg];if(f)f(el);
   });
   document.addEventListener('focusout',()=>{setTimeout(()=>{if(rt.pendingRender&&!sheet.cur&&!typing())render()},80)});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet.cur)closeSheet()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet.cur&&!sheet.cur.cfg.modal)closeSheet()});
   $('#importfile').addEventListener('change',e=>{
     const file=e.target.files&&e.target.files[0];e.target.value='';if(!file)return;
     const r=new FileReader();

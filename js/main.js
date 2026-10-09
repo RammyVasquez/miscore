@@ -1,5 +1,6 @@
 // Punto de entrada: conecta módulos y arranca la app.
-import { hooks, rt, typing, loadLocal, initCloud } from './state.js';
+import { hooks, rt, typing, loadLocal, getMeta, setMeta } from './state.js';
+import { initCloud } from './cloud.js';
 import { ui, sheet } from './ui.js';
 import { render } from './render.js';
 import { applyTheme, bindEvents } from './actions.js';
@@ -8,6 +9,9 @@ hooks.render = render;
 hooks.isSheetOpen = () => !!sheet.cur;
 
 loadLocal();
+if (!getMeta().since) setMeta({ since: Date.now() });
+// Pide al navegador que no borre los datos de la app automáticamente
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 applyTheme();
 bindEvents();
 render();
