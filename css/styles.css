@@ -127,3 +127,31 @@ svg.i{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-l
   .toast{bottom:28px}
 }
 @media (prefers-reduced-motion:no-preference){ .sheet{animation:up .18s ease-out} @keyframes up{from{opacity:0;margin-top:14px}to{opacity:1;margin-top:0}} }
+
+/* ---- Web app en celular ---- */
+html{background:var(--bg);-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;-webkit-text-size-adjust:100%}
+body{touch-action:manipulation;min-height:100vh;min-height:100dvh}
+button,.row,.chk,.icon,.tabbar{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,select,textarea{font-size:16px}
+.row:active{background:var(--surf2)}
+.btn:active,.icon:active,.fab:active{transform:scale(.97)}
+.btn,.icon,.tabbar button{transition:transform .08s}
+.demo{display:flex;flex-direction:column;gap:10px;background:var(--surf);border:1.5px dashed var(--lib);border-radius:16px;padding:12px 14px;margin-bottom:14px;font-size:14.5px}
+.demo .btns{margin-top:0}
+.welcome{margin-top:max(4vh,12px)}
+.welcome .ask{background:var(--surf);border:1px solid var(--line);border-radius:22px;padding:18px;margin:18px 0}
+.welcome .ask h2{font-size:21px;margin-bottom:8px}
+.bigin{display:block;width:100%;font-family:var(--font-d);font-size:44px;font-weight:800;border:0;border-bottom:3px solid var(--lib);background:transparent;padding:8px 0;color:var(--ink);border-radius:0;outline:none}
+@media (max-width:859px){
+  .shell{padding-top:6px}
+  .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;margin:0 -16px 14px;padding:10px 16px;background:var(--bg);background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+  .top h1{font-size:26px}
+  .tabbar{background:var(--surf);background:color-mix(in srgb,var(--surf) 92%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+  .tabbar button{min-height:52px;font-size:11px}
+  .tabbar button svg{width:24px;height:24px}
+  .tabbar button[aria-current="page"]{background:color-mix(in srgb,var(--pri) 14%,transparent)}
+  .sheet::before{content:"";display:block;width:42px;height:4px;border-radius:4px;background:var(--line);margin:-8px auto 14px}
+  .btn{min-height:46px}
+  .btn.sm{min-height:38px}
+  .hero{border-radius:26px}
+}

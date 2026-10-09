@@ -19,8 +19,9 @@ export function render(){
   if(!S.config.onboarded){view.innerHTML=vWelcome();$('#side').innerHTML='';$('#tabbar').style.display='none';$('#fabroot').innerHTML='';return}
   $('#tabbar').style.display='';
   const r=ui.route;
+  const demo=S.config.demo?'<div class="demo"><div><b>Estás viendo datos de ejemplo.</b> Toca y edita lo que quieras para practicar.</div><div class="btns"><button class="btn sm" data-act="clear-demo">Empezar desde cero</button><button class="btn ghost sm" data-act="hide-demo">Ocultar aviso</button></div></div>':'';
   const fn={resumen:vResumen,quincena:vQuincena,gastos:vGastos,tarjetas:vTarjetas,metas:vMetas,fijos:vFijos,reportes:vReportes,mas:vMas,ajustes:vAjustes}[r];
-  view.innerHTML='<div class="top"><h1>'+TITLES[r]+'</h1><span class="sync '+rt.syncMode+'"><i></i><span>'+esc(statusText())+'</span></span></div>'+fn();
+  view.innerHTML='<div class="top"><h1>'+TITLES[r]+'</h1><span class="sync '+rt.syncMode+'"><i></i><span>'+esc(statusText())+'</span></span></div>'+demo+fn();
   const tabOf=TABS.some(t=>t[0]===r)?r:'mas';
   $('#side').innerHTML='<div class="brand">Mis finanzas</div>'+NAV.map(n=>'<button data-act="go" data-r="'+n[0]+'"'+(n[0]===r?' aria-current="page"':'')+'>'+ic(n[0])+'<span>'+n[1]+'</span></button>').join('');
   $('#tabbar').innerHTML=TABS.map(t=>'<button data-act="go" data-r="'+t[0]+'"'+(t[0]===tabOf?' aria-current="page"':'')+'>'+ic(t[0])+'<span>'+t[1]+'</span></button>').join('');

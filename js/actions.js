@@ -5,7 +5,7 @@ import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc } from './logic.
 import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet } from './ui.js';
 import { render } from './render.js';
 import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm } from './forms.js';
-import { seedTemplate } from './seed.js';
+import { seedDemo } from './seed.js';
 
 export function toggleAlloc(id){
   const q=getQ(ui.ym,ui.q),a=q.allocs.find(x=>x.id===id);if(!a)return;
@@ -18,11 +18,26 @@ export function toggleAlloc(id){
 }
 export function prevQ(){if(ui.q===2)ui.q=1;else{ui.q=2;ui.ym=addMonths(ui.ym,-1)}}
 export function nextQ(){if(ui.q===1)ui.q=2;else{ui.q=1;ui.ym=addMonths(ui.ym,1)}}
+async function resetAll(){
+  const keys=Object.keys(S.months);
+  S.config=blankConfig();S.months={};dirty.cfg=false;dirty.months.clear();saveLocal();
+  if(DB.db){try{await DB.db.doc(DB.base+'/config').set(clean(S.config));for(const k of keys){try{await DB.db.doc(DB.base+'/m-'+k).delete()}catch(e){}}}catch(e){}}
+}
 export const ACT={
   go(el){ui.route=el.dataset.r;render();window.scrollTo(0,0)},
   'go-gastos'(){ui.gym=ui.ym;ui.route='gastos';render();window.scrollTo(0,0)},
-  seed:seedTemplate,
-  blank(){S.config=blankConfig();S.config.onboarded=true;touchCfg();render()},
+  seed:seedDemo,
+  blank(){ui.wstep='ingreso';render()},
+  'w-back'(){ui.wstep='ask';render()},
+  start(){
+    const v=num(($('#wIngreso')||{}).value);
+    if(!(v>0)){toast('Escribe cuánto cobras por quincena');return}
+    S.config=blankConfig();S.config.onboarded=true;S.config.ingresoQ=v;
+    ui.route='resumen';touchCfg();render();
+  },
+  'clear-demo'(){askConfirm('Se quitará la información de ejemplo y empezarás con tus propios datos.','Empezar desde cero',()=>{resetAll().then(()=>{ui.wstep='ask';ui.route='resumen';render()})})},
+  'hide-demo'(){S.config.demo=false;touchCfg();render()},
+  install(){const e=rt.installEvt;if(!e)return;e.prompt();Promise.resolve(e.userChoice).finally(()=>{rt.installEvt=null;render()})},
   'q-prev'(){prevQ();render()},'q-next'(){nextQ();render()},
   'g-prev'(){ui.gym=addMonths(ui.gym,-1);render()},'g-next'(){ui.gym=addMonths(ui.gym,1);render()},
   'r-prev'(){ui.rym=addMonths(ui.rym,-1);render()},'r-next'(){ui.rym=addMonths(ui.rym,1);render()},
@@ -66,10 +81,7 @@ export const ACT={
     try{const u=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}catch(e){toast('No se pudo descargar el respaldo')}
   },
   import(){$('#importfile').click()},
-  wipe(){askConfirm('Se borrarán tus tarjetas, quincenas, movimientos y metas. Descarga un respaldo antes si quieres conservarlos.','Borrar todo',async()=>{
-    const keys=Object.keys(S.months);S.config=blankConfig();S.months={};saveLocal();
-    if(DB.db){try{await DB.db.doc(DB.base+'/config').set(clean(S.config));for(const k of keys){try{await DB.db.doc(DB.base+'/m-'+k).delete()}catch(e){}}}catch(e){}}
-    ui.route='resumen';render()})}
+  wipe(){askConfirm('Se borrarán tus tarjetas, quincenas, movimientos y metas. Descarga un respaldo antes si quieres conservarlos.','Borrar todo',async()=>{await resetAll();ui.wstep='ask';ui.route='resumen';render()})}
 };
 export const CHG={
   'q-ingreso'(el){const q=getQ(ui.ym,ui.q);q.ingreso=num(el.value);touchMonth(ui.ym);render()},

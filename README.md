@@ -10,6 +10,9 @@ Es HTML, CSS y JavaScript con módulos nativos (ES modules). **No hay build ni d
 miscore/
   index.html            estructura base de la página
   vercel.json           configuración de Vercel
+  manifest.webmanifest  datos para instalarla como app en el celular
+  sw.js                 service worker: abre sin conexión
+  icons/                íconos de la app
   css/
     styles.css          estilos y tema claro/oscuro
   js/
@@ -22,7 +25,7 @@ miscore/
     render.js           dibuja la pantalla actual y el menú
     forms.js            formularios de alta y edición
     actions.js          acciones de botones y eventos globales
-    seed.js             plantilla inicial (basada en tu hoja)
+    seed.js             información de ejemplo ($12,000 por quincena)
     views/
       resumen.js  quincena.js  gastos.js  tarjetas.js
       metas.js    fijos.js     reportes.js mas.js
@@ -40,6 +43,7 @@ Dónde tocar según lo que quieras cambiar:
 | Colores, tipografía, espaciados | `css/styles.css` |
 | Dónde y cómo se guardan los datos | `js/state.js` |
 | Los datos de ejemplo al empezar | `js/seed.js` |
+| Íconos, nombre o color al instalarla | `manifest.webmanifest` e `icons/` |
 
 ## Probar en tu computadora
 
@@ -58,6 +62,17 @@ y abre http://localhost:8000
 2. En vercel.com: **Add New > Project** e importa el repo.
 3. Framework preset: **Other**. Sin build command ni output directory.
 4. Cada `git push` a `main` publica solo. Las demás ramas generan una URL de prueba.
+
+## Primer uso
+
+Al abrir la app por primera vez pregunta si quieres precargar información de ejemplo (ingreso de $12,000 por quincena, tarjetas, gastos y metas inventados). Si dices que no, te pide cuánto cobras por quincena y empiezas en blanco. Con el ejemplo cargado aparece un aviso con el botón **Empezar desde cero**.
+
+## Instalarla como app en el celular
+
+- **iPhone (Safari):** Compartir > Agregar a pantalla de inicio.
+- **Android (Chrome):** menú > Instalar app (también aparece un botón en Ajustes).
+
+Se abre a pantalla completa, con su ícono, y funciona sin conexión gracias a `sw.js`. Si agregas o renombras archivos de `js/` o `css/`, súbelos también a la lista `SHELL` de `sw.js` y cambia `VERSION` (por ejemplo `miscore-v2`).
 
 ## Datos
 

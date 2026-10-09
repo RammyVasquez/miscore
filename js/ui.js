@@ -4,7 +4,7 @@ import { rt, hooks } from './state.js';
 
 export const sheet={cur:null};
 const now0=new Date();
-export const ui={route:'resumen',fym:ymOf(now0),ym:ymOf(now0),q:now0.getDate()<=15?1:2,gym:ymOf(now0),rym:ymOf(now0)};
+export const ui={route:'resumen',wstep:'ask',fym:ymOf(now0),ym:ymOf(now0),q:now0.getDate()<=15?1:2,gym:ymOf(now0),rym:ymOf(now0)};
 export const NAV=[['resumen','Resumen'],['quincena','Quincena'],['gastos','Gastos'],['tarjetas','Tarjetas'],['metas','Metas'],['fijos','Fijos'],['reportes','Reportes'],['ajustes','Ajustes']];
 export const TABS=[['resumen','Resumen'],['quincena','Quincena'],['gastos','Gastos'],['tarjetas','Tarjetas'],['mas','Más']];
 export const FAB_ROUTES=['resumen','quincena','gastos'];

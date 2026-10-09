@@ -2,7 +2,7 @@
 import { stable, clean } from './util.js';
 import { render } from './render.js';
 
-export const rt={syncMode:'local',pendingRender:false};
+export const rt={syncMode:'local',pendingRender:false,installEvt:null};
 // main.js conecta estas funciones para evitar importaciones circulares
 export const hooks={render:()=>{},isSheetOpen:()=>false};
 const LS='mis-finanzas-v1';
@@ -10,7 +10,7 @@ export const S={config:null,months:{}};
 export const dirty={cfg:false,months:new Set()};
 export const DB={db:null,base:null,first:false};
 export const typing=()=>{const a=document.activeElement;return !!(a&&a.matches&&a.matches('#view input,#view select,#view textarea'))};
-export const blankConfig=()=>({onboarded:false,ingresoQ:0,tarjetas:[],fijos:[],metas:[],plantilla:[],cats:['Mandado','Salidas','Gasolina','Salud','Hogar','Servicios','Compras','Otros']});
+export const blankConfig=()=>({onboarded:false,demo:false,ingresoQ:0,tarjetas:[],fijos:[],metas:[],plantilla:[],cats:['Mandado','Salidas','Gasolina','Salud','Hogar','Servicios','Compras','Otros']});
 export function loadLocal(){try{const r=localStorage.getItem(LS);if(r){const o=JSON.parse(r);S.config=Object.assign(blankConfig(),o.config);S.months=o.months||{};return}}catch(e){}S.config=blankConfig();S.months={}}
 export function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({config:S.config,months:S.months}))}catch(e){}}
 let pt=null;
