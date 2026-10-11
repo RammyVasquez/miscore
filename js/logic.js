@@ -21,13 +21,14 @@ export function qSummary(ym,n){
   const cash=gastos.filter(t=>t.medio==='efectivo'||!t.medio);
   const ingreso=(+q.ingreso||0)+extras;
   let asignado=0,over=0;const by={},cats=new Set();
-  q.allocs.forEach(a=>{
+  const allocs=q.allocs.concat(autoAllocs(ym,n));
+  allocs.forEach(a=>{
     const m=allocMonto(a,ingreso);asignado+=m;
     if(a.kind==='gasto'&&a.cat){cats.add(a.cat);const sp=sum(cash.filter(t=>t.cat===a.cat),t=>t.monto);by[a.id]={plan:m,spent:sp};over+=Math.max(0,sp-m)}
     else by[a.id]={plan:m};
   });
   const unb=sum(cash.filter(t=>!cats.has(t.cat)),t=>t.monto);
-  return {q,tx,recs,extras,ingreso,asignado,over,unb,libre:round2(ingreso-asignado-over-unb),gastado:sum(gastos,t=>t.monto),by};
+  return {q,tx,recs,allocs,extras,ingreso,asignado,over,unb,libre:round2(ingreso-asignado-over-unb),gastado:sum(gastos,t=>t.monto),by};
 }
 export function txEffect(t,sign){
   if(t.tipo==='ingreso')return;
@@ -63,8 +64,6 @@ export function fijoMonto(f,ym){
 }
 export const esDirecto=f=>!f.medio||f.medio==='efectivo';
 export const fijosQ=(ym,n)=>S.config.fijos.map(f=>({f:f,m:fijoMontoQ(f,ym,n)})).filter(x=>x.m>0);
-// Gastos del mes que pagas directo y todavía no tienen quincena asignada
-export const fijosSinQ=ym=>S.config.fijos.filter(f=>!f.porQ&&f.reparto!=='mitad'&&!(+f.q>0)&&esDirecto(f)&&fijoDue(f,ym)&&fijoMonto(f,ym)>0&&!enApartados(ym,1,f.nombre)&&!enApartados(ym,2,f.nombre));
 export const metaObj=m=>(m.desglose&&m.desglose.length)?sum(m.desglose,d=>+d.m||0):(+m.objetivo||0);
 export function revertAlloc(a){
   if(!a.done)return;
@@ -149,7 +148,7 @@ export const msiTotalMes = ym => round2(sum(S.config.msi || [], m => { const i =
 // Lo que sobra después de tus apartados de las dos quincenas
 export function planLibreMes(ym) { let s = 0; [1, 2].forEach(n => { const r = qSummary(ym, n); s += r.ingreso - r.asignado; }); return round2(s); }
 const esRenta = nombre => norm(nombre).indexOf('renta') >= 0;
-export const rentaApartados = ym => round2([1, 2].reduce((s, n) => { const q = getQ(ym, n), base = qBase(ym, n); return s + sum(q.allocs.filter(a => esRenta(a.nombre)), a => allocMonto(a, base)); }, 0));
+export const rentaApartados = ym => round2([1, 2].reduce((s, n) => { getQ(ym, n); const base = qBase(ym, n); return s + sum(allAllocs(ym, n).filter(a => esRenta(a.nombre)), a => allocMonto(a, base)); }, 0));
 export const rentaFijos = ym => round2(sum(S.config.fijos.filter(f => esRenta(f.nombre)), f => fijoMonto(f, ym)));
 // Mensualidad de una compra a meses (tasa anual en %; 0 = meses sin intereses)
 export function pmt(P, tasaAnual, n) { const r = (+tasaAnual || 0) / 100 / 12; return round2(r > 0 ? P * r / (1 - Math.pow(1 + r, -n)) : P / n); }
@@ -168,3 +167,20 @@ export function msiLiberan(ym0, horizonte) {
     .filter(x => x.estado === 'activa' && monthIdx(x.mes) - monthIdx(ym0) <= horizonte)
     .sort((a, b) => a.mes.localeCompare(b.mes));
 }
+
+// ---- Apartados que salen solos de los gastos fijos que pagas directo (efectivo o débito) ----
+// Un gasto fijo mensual sin quincena se reparte mitad y mitad. Si ya hay un apartado con el mismo nombre, no se duplica.
+export function autoAllocs(ym, n) {
+  const q = roMonth(ym)['q' + n], manual = q ? q.allocs : [];
+  if (manual.some(a => a.auto === 'fijos')) return [];   // versión anterior: un solo apartado con el total
+  const out = [];
+  S.config.fijos.forEach(f => {
+    if (f.auto === false || !esDirecto(f)) return;
+    if (manual.some(a => norm(a.nombre) === norm(f.nombre))) return;
+    let m = fijoMontoQ(f, ym, n);
+    if (!m && !f.porQ && f.reparto !== 'mitad' && !(+f.q > 0) && fijoDue(f, ym)) m = round2(fijoMonto(f, ym) / 2);
+    if (m > 0) out.push({ id: 'f:' + f.id, nombre: f.nombre, kind: 'pago', monto: m, pct: 0, ref: '', cat: '', done: !!(q && q.fdone && q.fdone[f.id]), auto: 'fijo', fijoId: f.id });
+  });
+  return out;
+}
+export const allAllocs = (ym, n) => { const q = roMonth(ym)['q' + n]; return (q ? q.allocs : []).concat(autoAllocs(ym, n)); };

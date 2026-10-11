@@ -2,6 +2,7 @@
 import { ui } from '../ui.js';
 import { esc, ic } from '../util.js';
 import { cloud, cloudConfigured } from '../cloud.js';
+import { vWizard } from './wizard.js';
 
 const LOGO = '<svg class="wl-logo" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#BDEBD6"/><circle cx="256" cy="262" r="214" fill="#D5F5E6"/><g transform="translate(256 256) scale(0.96) translate(-256 -256)"><g transform="translate(0 -10)"><path d="M86 150 l7 -17 l7 17 l17 7 l-17 7 l-7 17 l-7 -17 l-17 -7z" fill="#FFFFFF" opacity=".9"/><path d="M432 214 l5 -13 l5 13 l13 5 l-13 5 l-5 13 l-5 -13 l-13 -5z" fill="#FFFFFF" opacity=".9"/><path d="M424 86 l4 -10 l4 10 l10 4 l-10 4 l-4 10 l-4 -10 l-10 -4z" fill="#FFFFFF" opacity=".8"/><ellipse cx="188" cy="452" rx="40" ry="23" fill="#FF8FAE"/><ellipse cx="324" cy="452" rx="40" ry="23" fill="#FF8FAE"/><circle cx="256" cy="112" r="50" fill="#F5B700"/><circle cx="256" cy="112" r="35" fill="none" stroke="#D99A00" stroke-width="8"/><path d="M238 96 Q249 85 263 89" stroke="#FFE59A" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M128 198 Q102 96 206 138 Q234 157 221 208 Z" fill="#FF9BB8"/><path d="M384 198 Q410 96 306 138 Q278 157 291 208 Z" fill="#FF9BB8"/><path d="M147 188 Q134 130 197 154 Q211 164 205 194 Z" fill="#FFD3DF"/><path d="M365 188 Q378 130 315 154 Q301 164 307 194 Z" fill="#FFD3DF"/><ellipse cx="256" cy="298" rx="162" ry="150" fill="#FFB6CB"/><ellipse cx="190" cy="214" rx="48" ry="21" fill="#FFD6E2" opacity=".85" transform="rotate(-28 190 214)"/><ellipse cx="205" cy="282" rx="14" ry="19" fill="#3A2432"/><circle cx="210" cy="274" r="5.5" fill="#fff"/><ellipse cx="307" cy="282" rx="14" ry="19" fill="#3A2432"/><circle cx="312" cy="274" r="5.5" fill="#fff"/><ellipse cx="158" cy="330" rx="28" ry="17" fill="#FF7FA3" opacity=".55"/><ellipse cx="354" cy="330" rx="28" ry="17" fill="#FF7FA3" opacity=".55"/><ellipse cx="256" cy="340" rx="64" ry="47" fill="#FF9DB9"/><ellipse cx="234" cy="340" rx="9" ry="13" fill="#D4577C"/><ellipse cx="278" cy="340" rx="9" ry="13" fill="#D4577C"/><path d="M237 394 Q256 412 275 394" fill="none" stroke="#C4476B" stroke-width="9" stroke-linecap="round"/></g></g></svg>';
 
@@ -13,6 +14,7 @@ function acct() {
 }
 
 export function vWelcome() {
+  if (ui.wstep === 'wizard') return vWizard();
   if (ui.wstep === 'ingreso') {
     return '<div class="wl"><button class="link wl-back" data-act="w-back">‹ Atrás</button>'
       + '<h1 class="wl-h">¿Cuánto cobras por quincena?</h1>'
@@ -34,6 +36,7 @@ export function vWelcome() {
     + '<section class="wl-ask"><h2>¿Quieres precargar información de ejemplo para que conozcas mejor cómo funciona?</h2>'
     + '<p>Usaremos un ingreso de $12,000 por quincena, con tarjetas, gastos y metas inventados. Los puedes borrar con un toque cuando quieras.</p>'
     + '<button class="btn wl-btn" data-act="seed">Sí, precargar ejemplo</button>'
-    + '<button class="btn ghost wl-btn" data-act="blank">No, empezar desde cero</button></section>'
+    + '<button class="btn ghost wl-btn" data-act="wizard">No, configurarla con mis datos (5 pasos)</button>'
+    + '<p class="wl-quick"><button class="link" data-act="blank">Prefiero entrar directo y capturar solo mi sueldo</button></p></section>'
     + acct() + '</div>';
 }

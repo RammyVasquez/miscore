@@ -1,7 +1,7 @@
 // Service worker: la app abre sin conexión.
 // Estrategia: red primero (siempre ves la última versión) y, si no hay internet, lo guardado.
 // Sube el número de VERSION si cambias la lista de archivos.
-const VERSION = 'miscore-v10';
+const VERSION = 'miscore-v12';
 const SHELL = [
   "./",
   "index.html",
@@ -10,6 +10,7 @@ const SHELL = [
   "icons/icon-192.png",
   "icons/icon-512.png",
   "icons/favicon.svg",
+  "js/acciones.js",
   "js/actions.js",
   "js/auth.js",
   "js/charts.js",
@@ -24,6 +25,7 @@ const SHELL = [
   "js/state.js",
   "js/ui.js",
   "js/util.js",
+  "js/wizard.js",
   "js/vendor/supabase.js",
   "js/views/ajustes.js",
   "js/views/fijos.js",
@@ -36,7 +38,8 @@ const SHELL = [
   "js/views/resumen.js",
   "js/views/tarjetas.js",
   "js/views/vales.js",
-  "js/views/welcome.js"
+  "js/views/welcome.js",
+  "js/views/wizard.js"
 ];
 
 self.addEventListener('install', e => {

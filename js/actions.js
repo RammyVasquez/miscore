@@ -6,12 +6,16 @@ import { authForm } from './auth.js';
 import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc, fijosQ, esDirecto } from './logic.js';
 import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet, saveProy } from './ui.js';
 import { proyRefresh } from './views/proyecciones.js';
+import { faltaApartar } from './acciones.js';
+import { wiz, saveWiz, setPath, addCard, delCard, addFijo, delFijo, autoAgregar, finish as wizFinish, PASOS } from './wizard.js';
+import { wizRefresh } from './views/wizard.js';
 import { render } from './render.js';
 import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm, msiForm, recForm, valeForm } from './forms.js';
 import { seedDemo } from './seed.js';
 
 export function toggleAlloc(id,ymArg,qArg){
   const Y=ymArg||ui.ym,N=+qArg||ui.q;
+  if(String(id).indexOf('f:')===0){const q0=getQ(Y,N);q0.fdone=q0.fdone||{};const fid=id.slice(2);if(q0.fdone[fid])delete q0.fdone[fid];else q0.fdone[fid]=true;touchMonth(Y);render();return}
   const q=getQ(Y,N),a=q.allocs.find(x=>x.id===id);if(!a)return;
   if(!a.done){
     a.done=true;const m=allocMonto(a,qBase(Y,N));a.aplicado=m;
@@ -32,6 +36,24 @@ export const ACT={
   seed:seedDemo,
   blank(){ui.wstep='ingreso';render()},
   'w-back'(){ui.wstep='ask';render()},
+  wizard(){ui.wstep='wizard';wiz();render();window.scrollTo(0,0)},
+  'wiz-exit'(){ui.wstep='ask';render();window.scrollTo(0,0)},
+  'wiz-back'(){const w=wiz();if(w.step>1){w.step--;saveWiz()}else ui.wstep='ask';render();window.scrollTo(0,0)},
+  'wiz-next'(){
+    const w=wiz();
+    if(w.step===1&&!(num(w.ingreso)>0)){toast('Escribe cuánto cobras por quincena');return}
+    const m=autoAgregar(w.step);if(m){toast(m);return}
+    w.step=Math.min(PASOS,w.step+1);saveWiz();render();window.scrollTo(0,0);
+  },
+  'wiz-skip'(){const w=wiz();w.step=Math.min(PASOS,w.step+1);saveWiz();render();window.scrollTo(0,0)},
+  'wiz-goto'(el){wiz().step=+el.dataset.s;saveWiz();render();window.scrollTo(0,0)},
+  'wiz-amount'(el){setPath('ingreso',el.dataset.v);render()},
+  'wiz-chip-fijo'(el){setPath('fx.nombre',el.dataset.v);render()},
+  'wiz-add-card'(){const m=addCard();if(m){toast(m);return}render()},
+  'wiz-del-card'(el){delCard(el.dataset.id);render()},
+  'wiz-add-fijo'(){const m=addFijo();if(m){toast(m);return}render()},
+  'wiz-del-fijo'(el){delFijo(el.dataset.id);render()},
+  'wiz-finish'(){wizFinish();render();window.scrollTo(0,0);toast('Listo: tu app está configurada')},
   start(){
     const v=num(($('#wIngreso')||{}).value);
     if(!(v>0)){toast('Escribe cuánto cobras por quincena');return}
@@ -67,6 +89,15 @@ export const ACT={
     const f=p.fecha?p.fecha+'-'+pad(lastDay(+p.fecha.slice(0,4),+p.fecha.slice(5,7))):'';
     S.config.metas.push({id:uid8(),nombre:(p.nombre||'').trim()||'Mi compra',objetivo:precio,ahorrado:round2(num(p.ahorrado)),fecha:f,desglose:[]});
     touchCfg();toast('Meta creada. La puedes ver en Metas.');ui.route='metas';render();window.scrollTo(0,0);
+  },
+  'plan-next'(){const d=new Date();ui.ym=ymOf(d);ui.q=d.getDate()<=15?1:2;nextQ();ui.route='quincena';render();window.scrollTo(0,0)},
+  'apartar-tarjeta'(el){
+    const c=S.config.tarjetas.find(x=>x.id===el.dataset.id);if(!c)return;
+    const falta=faltaApartar(c);if(!(falta>0)){toast('Ya tienes apartado lo necesario');return}
+    const d=new Date();ui.ym=ymOf(d);ui.q=d.getDate()<=15?1:2;
+    const q=getQ(ui.ym,ui.q),a=q.allocs.find(x=>x.kind==='tarjeta'&&x.ref===c.id&&!x.done&&!(+x.pct>0));
+    if(a)a.monto=round2((+a.monto||0)+falta);else q.allocs.push({id:uid8(),nombre:'Pagar '+c.nombre,kind:'tarjeta',ref:c.id,cat:'',monto:falta,pct:0,done:false});
+    touchMonth(ui.ym);render();toast('Listo: apartaste '+money(falta)+' para '+c.nombre);
   },
   'toggle-hide'(){setHidden(!privacy.hidden);render()},
   'edit-alloc'(el){allocForm(el.dataset.id)},
@@ -111,14 +142,6 @@ export const ACT={
     openForm({title:f.nombre+' en '+mes,note:'Escribe lo que realmente pagaste este mes. Déjalo vacío para volver al monto estimado.',values:{monto:(f.vals&&f.vals[ui.fym]!=null)?f.vals[ui.fym]:''},fields:[{k:'monto',label:'Monto real',type:'number',raw:true}],
       onSubmit:o=>{f.vals=f.vals||{};if(String(o.monto==null?'':o.monto).trim()==='')delete f.vals[ui.fym];else f.vals[ui.fym]=num(o.monto);touchCfg();render()}});
   },
-  // Aparta en un apartado lo que toca pagar directo (efectivo o débito) de los gastos fijos de la quincena
-  'fijos-sobre'(){
-    const total=round2(sum(fijosQ(ui.ym,ui.q).filter(x=>esDirecto(x.f)),x=>x.m));
-    if(!(total>0))return;
-    const q=getQ(ui.ym,ui.q);let a=q.allocs.find(x=>x.auto==='fijos');
-    if(a)a.monto=total;else q.allocs.push({id:uid8(),nombre:'Gastos fijos de la quincena',kind:'pago',monto:total,pct:0,ref:'',cat:'',done:false,auto:'fijos'});
-    touchMonth(ui.ym);render();toast('Listo: apartaste '+money(total)+' para tus gastos fijos');
-  },
   close(){closeSheet()},
   'sheet-submit'(){if(sheet.cur&&!sheet.cur.busy)submitSheet()},
   'sheet-cancel'(){const c=sheet.cur&&sheet.cur.cfg;if(c&&c.onCancel)c.onCancel();closeSheet()},
@@ -147,6 +170,8 @@ export function bindEvents(){
   });
   const proyIn=e=>{const el=e.target.closest&&e.target.closest('[data-proy]');if(!el)return;ui.proy[el.dataset.proy]=el.value;saveProy();proyRefresh()};
   document.addEventListener('input',proyIn);document.addEventListener('change',proyIn);
+  const wizIn=e=>{const el=e.target.closest&&e.target.closest('[data-wiz]');if(!el)return;setPath(el.dataset.wiz,el.type==='checkbox'?el.checked:el.value);if(el.dataset.wizre||el.type==='checkbox')render();else wizRefresh()};
+  document.addEventListener('input',wizIn);document.addEventListener('change',wizIn);
   document.addEventListener('submit',e=>{e.preventDefault();if(sheet.cur&&sheet.cur.cfg.form&&!sheet.cur.busy)submitSheet()});
   document.addEventListener('change',e=>{
     const el=e.target.closest('[data-chg]');if(!el)return;

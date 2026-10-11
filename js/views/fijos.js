@@ -1,7 +1,7 @@
 // Pantalla: fijos.
 import { esc, money, MESES, cap, parseYM, ic, sum } from '../util.js';
 import { S } from '../state.js';
-import { cardName, fijoDue, fijoMonto } from '../logic.js';
+import { cardName, fijoDue, fijoMonto, esDirecto, enApartados } from '../logic.js';
 import { ui } from '../ui.js';
 
 const QL={1:'1ª quincena',2:'2ª quincena'};
@@ -18,7 +18,7 @@ export function vFijos(){
       const due=fijoDue(x,ym);
       const real=x.porQ?!!(x.vals&&(x.vals[ym+'-1']!=null||x.vals[ym+'-2']!=null)):!!(x.vals&&x.vals[ym]!=null&&x.vals[ym]!=='');
       const chips=(x.variable?'<span class="chip">Cambia</span>':'')+(x.porQ?'<span class="chip">Cada quincena</span>':(x.reparto==='mitad'?'<span class="chip">Mitad en cada quincena</span>'+(+x.q>0?'<span class="chip">Se paga en la '+QL[x.q]+'</span>':''):(+x.q>0?'<span class="chip">'+QL[x.q]+'</span>':'')))+((!x.porQ&&+x.cada>1)?'<span class="chip">Cada '+x.cada+' meses</span>':'');
-      const sub=esc(cardName(x.medio))+(x.cat?' · '+esc(x.cat):'')+(x.porQ?' · '+money(x.monto)+' cada quincena':'')+(x.reparto==='mitad'?' · apartas '+money(fijoMonto(x,ym)/2)+' en cada quincena':'')+(!due?' · no toca este mes':(x.variable?(real?' · monto real':' · estimado'):''));
+      const sub=esc(cardName(x.medio))+(x.cat?' · '+esc(x.cat):'')+(x.porQ?' · '+money(x.monto)+' cada quincena':'')+(x.reparto==='mitad'?' · apartas '+money(fijoMonto(x,ym)/2)+' en cada quincena':'')+(esDirecto(x)?(x.auto===false?' · solo anotado':((enApartados(ym,1,x.nombre)||enApartados(ym,2,x.nombre))?' · ya lo tienes como apartado':' · se aparta solo')):'')+(!due?' · no toca este mes':(x.variable?(real?' · monto real':' · estimado'):''));
       h+='<div class="row" data-act="edit-fijo" data-id="'+x.id+'"'+(due?'':' style="opacity:.55"')+'><div class="grow"><div class="nm">'+esc(x.nombre)+chips+'</div><div class="sb">'+sub+'</div>'
         +((x.variable&&due)?'<div class="btns" style="margin-top:6px"><button class="btn ghost sm" data-act="fijo-mes" data-id="'+x.id+'">'+(real?'Cambiar monto real':'Registrar monto real')+'</button></div>':'')
         +'</div><div class="amt">'+(due?money(fijoMonto(x,ym)):'—')+'</div><span class="pen">'+ic('edit')+'</span></div>';

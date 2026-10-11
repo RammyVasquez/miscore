@@ -114,13 +114,13 @@ export function fijoForm(id){
   const mesTxt=MESES[parseYM(ui.fym).m-1],vv=k=>(f&&f.vals&&f.vals[k]!=null)?f.vals[k]:'';
   openForm({
     title:f?'Editar gasto':'Nuevo gasto recurrente',
-    values:f?{nombre:f.nombre,monto:f.monto,tipo:f.tipo||'fijo',medio:f.medio||'efectivo',cat:f.cat||S.config.cats[0],variable:f.variable?'1':'0',cada:f.porQ?'q':String(f.cada||1),q:String(f.q||0),reparto:f.reparto==='mitad'?'mitad':'junto',desde:f.desde||ui.fym,montoMes:vv(ui.fym),montoQ1:vv(ui.fym+'-1'),montoQ2:vv(ui.fym+'-2')}
-      :{nombre:'',monto:'',tipo:'fijo',medio:'efectivo',cat:S.config.cats[0]||'Otros',variable:'0',cada:'1',q:'0',reparto:'junto',desde:ui.fym,montoMes:'',montoQ1:'',montoQ2:''},
+    values:f?{nombre:f.nombre,monto:f.monto,tipo:f.tipo||'fijo',medio:f.medio||'efectivo',cat:f.cat||S.config.cats[0],variable:f.variable?'1':'0',cada:f.porQ?'q':String(f.cada||1),q:String(f.q||0),reparto:f.reparto==='mitad'?'mitad':'junto',auto:f.auto===false?'0':'1',desde:f.desde||ui.fym,montoMes:vv(ui.fym),montoQ1:vv(ui.fym+'-1'),montoQ2:vv(ui.fym+'-2')}
+      :{nombre:'',monto:'',tipo:'fijo',medio:'efectivo',cat:S.config.cats[0]||'Otros',variable:'0',cada:'1',q:'0',reparto:'junto',auto:'1',desde:ui.fym,montoMes:'',montoQ1:'',montoQ2:''},
     fields:[
       {k:'nombre',label:'Nombre',req:true},
       {k:'monto',label:'Monto habitual o estimado',type:'number',req:true,hint:'Si se paga cada quincena, escribe lo que pagas cada vez.'},
       {k:'cada',label:'¿Cada cuánto se paga?',type:'select',re:true,opts:[['q','Cada quincena (2 veces al mes)'],['1','Cada mes'],['2','Cada 2 meses (bimestral)'],['3','Cada 3 meses'],['6','Cada 6 meses'],['12','Una vez al año']]},
-      {k:'q',label:'¿En qué quincena lo pagas?',type:'select',opts:[['0','No importa'],['1','1ª quincena (días 1 al 15)'],['2','2ª quincena (días 16 al fin de mes)']],hint:'Si pagas el día 15 o 16, normalmente es la 2ª (con lo que te depositan el 15).',when:v=>v.cada!=='q'},
+      {k:'q',label:'¿En qué quincena lo pagas?',type:'select',opts:[['0','No importa (se reparte mitad en cada quincena)'],['1','1ª quincena (días 1 al 15)'],['2','2ª quincena (días 16 al fin de mes)']],hint:'Si pagas el día 15 o 16, normalmente es la 2ª (con lo que te depositan el 15).',when:v=>v.cada!=='q'},
       {k:'reparto',label:'¿Cómo lo apartas?',type:'select',opts:[['junto','Todo en la quincena en que se paga'],['mitad','La mitad en cada quincena (lo voy juntando)']],hint:'Por ejemplo: una renta de $5,000 que pagas el día 16 y de la que apartas $2,500 cada quincena.',when:v=>v.cada==='1'},
       {k:'desde',label:'Mes de un pago',type:'month',hint:'Sirve para saber en qué meses toca pagarlo.',when:v=>v.cada!=='1'&&v.cada!=='q'},
       {k:'variable',label:'¿El monto cambia?',type:'select',re:true,opts:[['0','No, es siempre igual'],['1','Sí, cambia cada vez (luz, gasolina…)']]},
@@ -128,14 +128,15 @@ export function fijoForm(id){
       {k:'montoQ1',label:'Monto real de la 1ª quincena de '+mesTxt+' (opcional)',type:'number',raw:true,when:v=>v.variable==='1'&&v.cada==='q'},
       {k:'montoQ2',label:'Monto real de la 2ª quincena de '+mesTxt+' (opcional)',type:'number',raw:true,hint:'Déjalos vacíos para usar el estimado.',when:v=>v.variable==='1'&&v.cada==='q'},
       {k:'tipo',label:'Tipo',type:'select',opts:[['fijo','Gasto fijo'],['sub','Suscripción o gasto hormiga']]},
-      {k:'medio',label:'Se paga con',type:'select',opts:medioOpts},
+      {k:'medio',label:'Se paga con',type:'select',re:true,opts:medioOpts},
+      {k:'auto',label:'¿Se aparta solo en tus apartados?',type:'select',opts:[['1','Sí, baja mi libre cada quincena'],['0','No, solo lo anoto']],hint:'Si dices que sí, aparece en tus apartados de cada quincena. Si ya tienes un apartado con el mismo nombre, no se cuenta dos veces.',when:v=>v.medio==='efectivo'},
       {k:'cat',label:'Categoría',type:'select',opts:catOpts}
     ],
     onSubmit:o=>{
       const por=o.cada==='q',vals=Object.assign({},f&&f.vals);
       const setv=(key,raw)=>{if(o.variable==='1'&&String(raw==null?'':raw).trim()!=='')vals[key]=num(raw);else delete vals[key]};
       if(por){setv(ui.fym+'-1',o.montoQ1);setv(ui.fym+'-2',o.montoQ2);delete vals[ui.fym]}else setv(ui.fym,o.montoMes);
-      const d={nombre:o.nombre.trim(),monto:o.monto,tipo:o.tipo,medio:o.medio,cat:o.cat,variable:o.variable==='1',porQ:por,cada:por?1:(+o.cada||1),q:por?0:(+o.q||0),reparto:(!por&&o.cada==='1'&&o.reparto==='mitad')?'mitad':'junto',desde:(!por&&+o.cada>1)?(o.desde||ui.fym):'',vals:vals};
+      const d={nombre:o.nombre.trim(),monto:o.monto,tipo:o.tipo,medio:o.medio,cat:o.cat,variable:o.variable==='1',porQ:por,cada:por?1:(+o.cada||1),q:por?0:(+o.q||0),reparto:(!por&&o.cada==='1'&&o.reparto==='mitad')?'mitad':'junto',auto:!(o.medio==='efectivo'&&o.auto==='0'),desde:(!por&&+o.cada>1)?(o.desde||ui.fym):'',vals:vals};
       if(f)Object.assign(f,d);else S.config.fijos.push(Object.assign({id:uid8()},d));
       touchCfg();render();
     },

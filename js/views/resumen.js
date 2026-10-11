@@ -4,6 +4,7 @@ import { S } from '../state.js';
 import { qBounds, qSummary, cardInfo, fijoMonto, metaObj, KIND, msiInfo, msiMes, cardTotal, valeSaldo, valeProx } from '../logic.js';
 import { chipK } from '../components.js';
 import { donut, legend, ring, paceChart } from '../charts.js';
+import { accionesAhora } from '../acciones.js';
 
 export function vResumen() {
   const now = new Date(), ym = ymOf(now), n = now.getDate() <= 15 ? 1 : 2;
@@ -15,7 +16,7 @@ export function vResumen() {
   // Gasto del día a día (efectivo y débito) frente a lo que tienes para gastar
   const cash = s.tx.filter(t => t.tipo !== 'ingreso' && (t.medio === 'efectivo' || !t.medio));
   const spent = sum(cash, t => t.monto);
-  const topes = q.allocs.filter(a => a.kind === 'gasto');
+  const topes = s.allocs.filter(a => a.kind === 'gasto');
   const budget = sum(topes, a => plan(a.id)) + Math.max(0, s.ingreso - s.asignado);
   const cum = []; let acc = 0;
   for (let d = startDay; d <= endDay; d++) {
@@ -43,10 +44,12 @@ export function vResumen() {
     + '<div><span>− Gastos sin apartado</span><b>' + money(s.over + s.unb) + '</b></div>'
     + '<div class="res"><span>= Libre</span><b>' + money(s.libre) + '</b></div></div>'
     + '<p>Un apartado es una parte de tu sueldo con un destino, como los apartados de tu banco: diezmo, renta, tarjetas, ahorro o un tope de gasto.</p></details></section>';
+  const items = accionesAhora();
+  h += '<div class="panel todo"><h2>Qué hacer ahora</h2>' + (items.length ? items.map(x => '<div class="todo-i t-' + x.tono + '"><div class="grow"><div class="nm">' + esc(x.titulo) + '</div>' + (x.detalle ? '<div class="sb">' + esc(x.detalle) + '</div>' : '') + '</div><button class="btn sm' + (x.tono === 'bad' || x.tono === 'warn' ? '' : ' ghost') + '" data-act="' + x.act + '"' + (x.r ? ' data-r="' + x.r + '"' : '') + (x.id ? ' data-id="' + x.id + '"' : '') + '>' + esc(x.label) + '</button></div>').join('') : '<div class="empty">Todo en orden por ahora.</div>') + '</div>';
   h += '<div class="quick"><button class="btn ghost sm" data-act="add-extra">Ingreso extra</button><button class="btn ghost sm" data-act="go" data-r="quincena">Ver mi quincena</button></div>';
 
   // ---- Por pagar ----
-  const apartados = q.allocs.filter(a => a.kind !== 'gasto').slice().sort((a, b2) => (a.done ? 1 : 0) - (b2.done ? 1 : 0));
+  const apartados = s.allocs.filter(a => a.kind !== 'gasto').slice().sort((a, b2) => (a.done ? 1 : 0) - (b2.done ? 1 : 0));
   const pend = sum(apartados.filter(a => !a.done), a => plan(a.id));
   const pagar = '<div class="panel"><div class="head"><h2>Por pagar esta quincena</h2>' + (apartados.some(a => !a.done) ? '<span class="amt">' + money(pend) + '</span>' : '') + '</div>'
     + (apartados.length ? apartados.slice(0, 8).map(a => {
@@ -58,7 +61,7 @@ export function vResumen() {
 
   // ---- Reparto de la quincena (dona) ----
   const kinds = [['diezmo', 'Diezmo', 'var(--k-die)'], ['pago', 'Renta y otros pagos', 'var(--k-pag)'], ['tarjeta', 'Pago de tarjetas', 'var(--k-tar)'], ['meta', 'Ahorro y metas', 'var(--k-met)'], ['gasto', 'Gastos con tope', 'var(--k-gas)']];
-  const segs = kinds.map(k => ({ label: k[1], color: k[2], value: sum(q.allocs.filter(a => a.kind === k[0]), a => plan(a.id)) }));
+  const segs = kinds.map(k => ({ label: k[1], color: k[2], value: sum(s.allocs.filter(a => a.kind === k[0]), a => plan(a.id)) }));
   if (s.over + s.unb > 0) segs.push({ label: 'Gasto sin apartado', color: 'var(--bad)', value: s.over + s.unb });
   if (s.libre > 0) segs.push({ label: 'Libre', color: 'var(--lib)', value: s.libre });
   const reparto = '<div class="panel"><h2>¿A dónde se va tu quincena?</h2><div class="donutwrap">'

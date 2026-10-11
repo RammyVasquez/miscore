@@ -35,7 +35,7 @@ export function seedDemo(){
   c.plantilla=[
     al('Diezmo','diezmo',0,{pct:10}),al('Renta','pago',3000),
     al('Pago tarjeta azul','tarjeta',1500,{ref:azul.id}),al('Pago tarjeta de tienda','tarjeta',500,{ref:tienda.id}),
-    al('Fondo de emergencia','meta',1000,{ref:fondo.id}),al('Vacaciones','meta',500,{ref:viaje.id}),
+    al('Fondo de emergencia','meta',500,{ref:fondo.id}),al('Vacaciones','meta',200,{ref:viaje.id}),
     al('Despensa','gasto',1500,{cat:'Mandado'}),al('Salidas','gasto',800,{cat:'Salidas'})
   ];
   S.config=c;S.months={};

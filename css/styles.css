@@ -325,3 +325,38 @@ code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9em;background
 .trow.neg .mut{color:var(--bad)}
 .b-ok{fill:var(--ok)}
 .b-bad{fill:var(--bad)}
+
+/* ---- Qué hacer ahora ---- */
+.todo-i{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;border-left:5px solid var(--line);margin:8px 0;background:var(--surf2);border-radius:0 14px 14px 0}
+.todo-i .btn{flex:none;max-width:42%;white-space:normal;text-align:center}
+.todo-i.t-bad{border-left-color:var(--bad)}
+.todo-i.t-warn{border-left-color:var(--warn)}
+.todo-i.t-info{border-left-color:var(--pri)}
+.todo-i.t-ok{border-left-color:var(--ok)}
+
+.todo-i{flex-wrap:wrap}
+.todo-i .grow{flex:1 1 100%}
+.todo-i .btn{max-width:none;margin-left:auto}
+@media (min-width:700px){.todo-i{flex-wrap:nowrap}.todo-i .grow{flex:1 1 auto}}
+.todo-i .nm{font-weight:700}
+.todo-i .sb{font-size:13.5px;color:var(--mut);margin-top:2px;line-height:1.4}
+
+/* ---- Asistente de configuración ---- */
+.wz-top{display:flex;justify-content:space-between;align-items:center;margin:4px 0 10px;color:var(--mut);font-weight:700;font-size:14px}
+.wz-top .link{padding-left:0}
+.wz-prog{display:flex;gap:6px;margin-bottom:18px}
+.wz-prog i{flex:1;height:6px;border-radius:99px;background:var(--line)}
+.wz-prog i.on{background:var(--pri)}
+.wl .wl-ask+.wl-ask{margin-top:14px}
+.wz-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.wz-row:first-child{border-top:0}
+.wz-x{border:0;background:none;color:var(--mut);font-size:26px;line-height:1;cursor:pointer;padding:2px 8px}
+.wz-chk{display:flex;align-items:center;gap:12px;font-weight:700;font-size:17px;cursor:pointer;margin-bottom:6px}
+.wz-chk input{width:22px;height:22px;accent-color:var(--pri)}
+.wz-nav{display:flex;gap:10px;margin-top:20px}
+.wz-nav .btn{flex:1;min-height:52px;font-size:17px;border-radius:16px}
+.wz-skip{display:block;margin:12px auto 4px}
+.wl .wl-ask .btn{margin-top:4px}
+.wl-quick{margin:14px 0 0;text-align:center}
+#wiz-est{margin-top:14px}
+.wz-nav{position:sticky;bottom:0;z-index:5;background:var(--bg);margin:20px -16px 0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
