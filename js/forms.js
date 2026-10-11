@@ -114,13 +114,14 @@ export function fijoForm(id){
   const mesTxt=MESES[parseYM(ui.fym).m-1],vv=k=>(f&&f.vals&&f.vals[k]!=null)?f.vals[k]:'';
   openForm({
     title:f?'Editar gasto':'Nuevo gasto recurrente',
-    values:f?{nombre:f.nombre,monto:f.monto,tipo:f.tipo||'fijo',medio:f.medio||'efectivo',cat:f.cat||S.config.cats[0],variable:f.variable?'1':'0',cada:f.porQ?'q':String(f.cada||1),q:String(f.q||0),desde:f.desde||ui.fym,montoMes:vv(ui.fym),montoQ1:vv(ui.fym+'-1'),montoQ2:vv(ui.fym+'-2')}
-      :{nombre:'',monto:'',tipo:'fijo',medio:'efectivo',cat:S.config.cats[0]||'Otros',variable:'0',cada:'1',q:'0',desde:ui.fym,montoMes:'',montoQ1:'',montoQ2:''},
+    values:f?{nombre:f.nombre,monto:f.monto,tipo:f.tipo||'fijo',medio:f.medio||'efectivo',cat:f.cat||S.config.cats[0],variable:f.variable?'1':'0',cada:f.porQ?'q':String(f.cada||1),q:String(f.q||0),reparto:f.reparto==='mitad'?'mitad':'junto',desde:f.desde||ui.fym,montoMes:vv(ui.fym),montoQ1:vv(ui.fym+'-1'),montoQ2:vv(ui.fym+'-2')}
+      :{nombre:'',monto:'',tipo:'fijo',medio:'efectivo',cat:S.config.cats[0]||'Otros',variable:'0',cada:'1',q:'0',reparto:'junto',desde:ui.fym,montoMes:'',montoQ1:'',montoQ2:''},
     fields:[
       {k:'nombre',label:'Nombre',req:true},
       {k:'monto',label:'Monto habitual o estimado',type:'number',req:true,hint:'Si se paga cada quincena, escribe lo que pagas cada vez.'},
       {k:'cada',label:'¿Cada cuánto se paga?',type:'select',re:true,opts:[['q','Cada quincena (2 veces al mes)'],['1','Cada mes'],['2','Cada 2 meses (bimestral)'],['3','Cada 3 meses'],['6','Cada 6 meses'],['12','Una vez al año']]},
-      {k:'q',label:'¿En qué quincena se paga?',type:'select',opts:[['0','No importa'],['1','1ª quincena (días 1 al 15)'],['2','2ª quincena (días 16 al fin de mes)']],hint:'Así aparece en la quincena que le toca.',when:v=>v.cada!=='q'},
+      {k:'q',label:'¿En qué quincena lo pagas?',type:'select',opts:[['0','No importa'],['1','1ª quincena (días 1 al 15)'],['2','2ª quincena (días 16 al fin de mes)']],hint:'Si pagas el día 15 o 16, normalmente es la 2ª (con lo que te depositan el 15).',when:v=>v.cada!=='q'},
+      {k:'reparto',label:'¿Cómo lo apartas?',type:'select',opts:[['junto','Todo en la quincena en que se paga'],['mitad','La mitad en cada quincena (lo voy juntando)']],hint:'Por ejemplo: una renta de $5,000 que pagas el día 16 y de la que apartas $2,500 cada quincena.',when:v=>v.cada==='1'},
       {k:'desde',label:'Mes de un pago',type:'month',hint:'Sirve para saber en qué meses toca pagarlo.',when:v=>v.cada!=='1'&&v.cada!=='q'},
       {k:'variable',label:'¿El monto cambia?',type:'select',re:true,opts:[['0','No, es siempre igual'],['1','Sí, cambia cada vez (luz, gasolina…)']]},
       {k:'montoMes',label:'Monto real de '+mesTxt+' (opcional)',type:'number',raw:true,hint:'Déjalo vacío para usar el estimado.',when:v=>v.variable==='1'&&v.cada!=='q'},
@@ -134,7 +135,7 @@ export function fijoForm(id){
       const por=o.cada==='q',vals=Object.assign({},f&&f.vals);
       const setv=(key,raw)=>{if(o.variable==='1'&&String(raw==null?'':raw).trim()!=='')vals[key]=num(raw);else delete vals[key]};
       if(por){setv(ui.fym+'-1',o.montoQ1);setv(ui.fym+'-2',o.montoQ2);delete vals[ui.fym]}else setv(ui.fym,o.montoMes);
-      const d={nombre:o.nombre.trim(),monto:o.monto,tipo:o.tipo,medio:o.medio,cat:o.cat,variable:o.variable==='1',porQ:por,cada:por?1:(+o.cada||1),q:por?0:(+o.q||0),desde:(!por&&+o.cada>1)?(o.desde||ui.fym):'',vals:vals};
+      const d={nombre:o.nombre.trim(),monto:o.monto,tipo:o.tipo,medio:o.medio,cat:o.cat,variable:o.variable==='1',porQ:por,cada:por?1:(+o.cada||1),q:por?0:(+o.q||0),reparto:(!por&&o.cada==='1'&&o.reparto==='mitad')?'mitad':'junto',desde:(!por&&+o.cada>1)?(o.desde||ui.fym):'',vals:vals};
       if(f)Object.assign(f,d);else S.config.fijos.push(Object.assign({id:uid8()},d));
       touchCfg();render();
     },
@@ -205,16 +206,18 @@ export function valeForm(id) {
   openForm({
     title: v ? 'Editar vales' : 'Vales',
     note: 'Los vales no cuentan como sueldo ni afectan tu dinero libre: sirven para saber cuánto te queda. Cuando compres con ellos, registra el gasto y en "Se pagó con" elige tus vales.',
-    values: v ? { nombre: v.nombre, saldo: valeSaldo(v), recarga: v.recarga || '', dia: v.dia || 1 } : { nombre: '', saldo: '', recarga: '', dia: 1 },
+    values: v ? { nombre: v.nombre, saldo: valeSaldo(v), recarga: v.recarga || '', cada: v.cada === 'q' ? 'q' : '1', dia: v.dia || 1, dia2: v.dia2 || 16 } : { nombre: '', saldo: '', recarga: '', cada: '1', dia: 1, dia2: 16 },
     fields: [
       { k: 'nombre', label: 'Nombre (por ejemplo, Vales de despensa)', req: true },
       { k: 'saldo', label: 'Saldo actual', type: 'number' },
-      { k: 'recarga', label: 'Recarga mensual (opcional)', type: 'number', hint: 'Si te los recargan cada mes, escribe cuánto.' },
-      { k: 'dia', label: 'Día en que se recargan (1 a 31)', type: 'number', hint: 'Solo si tienen recarga mensual.' }
+      { k: 'recarga', label: 'Monto de cada recarga (opcional)', type: 'number', hint: 'Si te los recargan, escribe cuánto te dan cada vez.' },
+      { k: 'cada', label: '¿Cada cuánto se recargan?', type: 'select', re: true, opts: [['1', 'Cada mes'], ['q', 'Cada quincena (2 veces al mes)']] },
+      { k: 'dia', label: 'Día de la recarga (1 a 31)', type: 'number', hint: 'Solo si tienen recarga. Si es cada quincena, el primer día (por ejemplo el 1).' },
+      { k: 'dia2', label: 'Día de la segunda recarga del mes (1 a 31)', type: 'number', hint: 'Por ejemplo el 16, o el 30.', when: x => x.cada === 'q' }
     ],
     onSubmit: o => {
-      if (o.recarga > 0 && (o.dia < 1 || o.dia > 31)) { sheetNote('err', 'El día debe estar entre 1 y 31.'); return false; }
-      const d = { nombre: o.nombre.trim(), saldo0: round2(o.saldo), fecha0: ymd(new Date()), ts0: Date.now(), recarga: round2(o.recarga), dia: Math.round(o.dia) || 1 };
+      if (o.recarga > 0 && (o.dia < 1 || o.dia > 31 || (o.cada === 'q' && (o.dia2 < 1 || o.dia2 > 31)))) { sheetNote('err', 'Los días deben estar entre 1 y 31.'); return false; }
+      const d = { nombre: o.nombre.trim(), saldo0: round2(o.saldo), fecha0: ymd(new Date()), ts0: Date.now(), recarga: round2(o.recarga), cada: o.cada === 'q' ? 'q' : '1', dia: Math.round(o.dia) || 1, dia2: Math.round(o.dia2) || 16 };
       S.config.vales = S.config.vales || [];
       if (v) Object.assign(v, d); else S.config.vales.push(Object.assign({ id: uid8() }, d));
       touchCfg(); render();

@@ -51,6 +51,7 @@ export function fijoDue(f,ym){if(f.porQ)return true;const c=Math.max(1,+f.cada||
 // Un gasto "cada quincena" toca en las dos; uno mensual toca solo en la quincena que se le asignó.
 export function fijoMontoQ(f,ym,n){
   if(f.porQ){const v=f.vals&&f.vals[ym+'-'+n];return (v!=null&&v!=='')?(+v||0):(+f.monto||0)}
+  if(f.reparto==='mitad')return round2(fijoMonto(f,ym)/2);   // se aparta la mitad en cada quincena
   if(+f.q!==n)return 0;
   return fijoMonto(f,ym);
 }
@@ -63,7 +64,7 @@ export function fijoMonto(f,ym){
 export const esDirecto=f=>!f.medio||f.medio==='efectivo';
 export const fijosQ=(ym,n)=>S.config.fijos.map(f=>({f:f,m:fijoMontoQ(f,ym,n)})).filter(x=>x.m>0);
 // Gastos del mes que pagas directo y todavía no tienen quincena asignada
-export const fijosSinQ=ym=>S.config.fijos.filter(f=>!f.porQ&&!(+f.q>0)&&esDirecto(f)&&fijoDue(f,ym)&&fijoMonto(f,ym)>0&&!enApartados(ym,1,f.nombre)&&!enApartados(ym,2,f.nombre));
+export const fijosSinQ=ym=>S.config.fijos.filter(f=>!f.porQ&&f.reparto!=='mitad'&&!(+f.q>0)&&esDirecto(f)&&fijoDue(f,ym)&&fijoMonto(f,ym)>0&&!enApartados(ym,1,f.nombre)&&!enApartados(ym,2,f.nombre));
 export const metaObj=m=>(m.desglose&&m.desglose.length)?sum(m.desglose,d=>+d.m||0):(+m.objetivo||0);
 export function revertAlloc(a){
   if(!a.done)return;
@@ -107,14 +108,17 @@ export const recsQ=(ym,n)=>(S.config.ingresosRec||[]).map(r=>({r:r,m:recMonto(r,
 
 // ---- Vales (despensa, gasolina…): no son sueldo; se pagan "con vales" al registrar un gasto ----
 export const valeTx=id=>{const out=[];Object.keys(S.months).forEach(k=>(S.months[k].tx||[]).forEach(t=>{if(t.medio===id&&t.tipo!=='ingreso')out.push(t)}));return out};
+// Días del mes en que se recargan los vales (uno al mes o dos, si es cada quincena)
+export const valeDias=v=>{const a=Math.min(31,Math.max(1,Math.round(+v.dia)||1));if(v.cada!=='q')return [a];const b=Math.min(31,Math.max(1,Math.round(+v.dia2)||16));return a===b?[a]:[a,b].sort((x,y)=>x-y)};
+export const valeRecargaMes=v=>round2((+v.recarga||0)*valeDias(v).length);
 export function valeSaldo(v,hoy){
-  hoy=hoy||new Date();const end=ymd(hoy),f0=v.fecha0||end;
+  hoy=hoy||new Date();const end=ymd(hoy),f0=v.fecha0||end,dias=valeDias(v);
   let rec=0;
   if(+v.recarga>0){
-    let y=+f0.slice(0,4),m=+f0.slice(5,7);
-    for(let i=0;i<600;i++){
-      const d=Math.min(Math.max(1,Math.round(+v.dia)||1),lastDay(y,m)),date=y+'-'+pad(m)+'-'+pad(d);
-      if(date>end)break;if(date>f0)rec++;m++;if(m>12){m=1;y++}
+    let y=+f0.slice(0,4),m=+f0.slice(5,7),stop=false;
+    for(let i=0;i<600&&!stop;i++){
+      for(const dd of dias){const d=Math.min(dd,lastDay(y,m)),date=y+'-'+pad(m)+'-'+pad(d);if(date>end){stop=true;break}if(date>f0)rec++}
+      m++;if(m>12){m=1;y++}
     }
   }
   const gasto=sum(valeTx(v.id).filter(t=>t.ts?t.ts>(+v.ts0||0):t.f>f0),t=>t.monto);
@@ -122,7 +126,8 @@ export function valeSaldo(v,hoy){
 }
 export function valeProx(v,hoy){
   if(!(+v.recarga>0))return null;
-  hoy=hoy||new Date();const d=nextOccAfter(Math.round(+v.dia)||1,new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate()));
+  hoy=hoy||new Date();const base=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
+  const d=valeDias(v).map(x=>nextOccAfter(x,base)).sort((a,b)=>a-b)[0];
   return {fecha:d,dias:daysTo(d)};
 }
 export const valeGastoMes=(v,ym)=>sum(valeTx(v.id).filter(t=>t.f.slice(0,7)===ym),t=>t.monto);

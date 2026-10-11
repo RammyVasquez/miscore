@@ -1,7 +1,7 @@
 // Pantalla: quincena.
 import { esc, money, MESES, parseYM, ic, privacy, sum } from '../util.js';
 import { S } from '../state.js';
-import { qBounds, allocMonto, qSummary, msiMes, fijosQ, fijosSinQ, esDirecto, cardName, enApartados } from '../logic.js';
+import { qBounds, allocMonto, qSummary, msiMes, fijosQ, fijosSinQ, esDirecto, cardName, enApartados, fijoMonto } from '../logic.js';
 import { chipK, txRow } from '../components.js';
 import { ui } from '../ui.js';
 
@@ -16,7 +16,8 @@ export function vQuincena(){
   h+='<div class="panel"><div class="head"><h2>Ingresos extra</h2><button class="btn sm" data-act="add-extra">Agregar</button></div>'+((s.recs.length||ext.length)?s.recs.map(recRow).join('')+ext.map(txRow).join(''):'<div class="empty" style="padding:8px">Bonos, ventas, regalos… Si llega cada mes, al agregarlo elige "Sí, cada mes" y se suma solo. Suma al Libre y también al cálculo de los apartados con porcentaje, como el diezmo.</div>')+'</div>';
   const fq=fijosQ(ym,n).map(x=>Object.assign(x,{dup:esDirecto(x.f)&&enApartados(ym,n,x.f.nombre)}));
   const dupF=fq.filter(x=>x.dup),dirF=fq.filter(x=>esDirecto(x.f)&&!x.dup),tarF=fq.filter(x=>!esDirecto(x.f)),totDir=sum(dirF,x=>x.m),totTar=sum(tarF,x=>x.m),sinQ=fijosSinQ(ym);
-  const fRow=x=>'<div class="row" data-act="edit-fijo" data-id="'+x.f.id+'" data-ym="'+ym+'"><div class="grow"><div class="nm">'+esc(x.f.nombre)+'</div><div class="sb">'+(x.f.porQ?'Cada quincena':'Una vez al mes')+(esDirecto(x.f)?'':' · '+esc(cardName(x.f.medio)))+'</div></div><div class="amt">'+money(x.m)+'</div><span class="pen">'+ic('edit')+'</span></div>';
+  const fSub=x=>{const f=x.f;if(f.porQ)return 'Cada quincena';if(f.reparto==='mitad'){const tot=fijoMonto(f,ym);return 'Aparta la mitad de '+money(tot)+(+f.q>0?' · se paga todo en la '+(+f.q===1?'1ª':'2ª')+' quincena'+(+f.q===n?' ('+money(tot)+' hoy)':''):'')}return 'Una vez al mes'};
+  const fRow=x=>'<div class="row" data-act="edit-fijo" data-id="'+x.f.id+'" data-ym="'+ym+'"><div class="grow"><div class="nm">'+esc(x.f.nombre)+'</div><div class="sb">'+fSub(x)+(esDirecto(x.f)?'':' · '+esc(cardName(x.f.medio)))+'</div></div><div class="amt">'+money(x.m)+'</div><span class="pen">'+ic('edit')+'</span></div>';
   const yaSobre=q.allocs.some(a=>a.auto==='fijos');
   h+='<div class="panel"><div class="head"><h2>Gastos fijos de esta quincena</h2>'+(dirF.length?'<span class="amt">'+money(totDir)+'</span>':'')+'</div>';
   if(!fq.length)h+='<div class="empty" style="padding:8px">Aquí aparecen los gastos fijos que tocan en esta quincena: lo que pagas cada quincena y lo que cae en ella (la renta del día 1, por ejemplo). Se definen en la pestaña Fijos.</div>';
@@ -29,7 +30,7 @@ export function vQuincena(){
   if(sinQ.length)h+='<p class="hint" style="margin:10px 0 0">'+sinQ.length+(sinQ.length===1?' gasto que pagas directo no tiene':' gastos que pagas directo no tienen')+' quincena asignada. <button class="link" data-act="go" data-r="fijos">Asignar</button></p>';
   h+='</div>';
   h+='<div class="panel"><div class="head"><h2>Apartados de la quincena</h2><button class="btn sm" data-act="add-alloc">Agregar</button></div>'
-    +'<details class="what"><summary>¿Qué es un apartado?</summary><p>Es lo mismo que los <b>apartados</b> de tu app del banco: separas tu sueldo en partes con nombre (renta, diezmo, pagar la tarjeta, ahorro…) para no gastar en una cosa lo que era de otra.</p><p>Ejemplo: si te depositan $12,000 y apartas renta $3,000, tarjeta $2,000, ahorro $1,000 y despensa $1,500, te quedan <b>$4,500 libres</b>. Lo que no metes en ningún apartado es tu dinero libre.</p><p>Hay apartados de <b>pago</b> (los marcas con la palomita cuando ya pagaste) y apartados con <b>tope</b> de gasto (registras tus compras y ves cuánto te queda).</p></details>';
+    +'<details class="what"><summary>¿Qué es un apartado?</summary><p>Es lo mismo que los <b>apartados</b> de tu app del banco: separas tu sueldo en partes con nombre (renta, diezmo, pagar la tarjeta, ahorro…) para no gastar en una cosa lo que era de otra.</p><p>Ejemplo: si te depositan $12,000 y apartas renta $3,000, tarjeta $2,000, ahorro $1,000 y despensa $1,500, te quedan <b>$4,500 libres</b>. Lo que no metes en ningún apartado es tu dinero libre.</p><p>Hay apartados de <b>pago</b> (los marcas con la palomita cuando ya moviste ese dinero a su apartado o ya hiciste el pago) y apartados con <b>tope</b> de gasto (registras tus compras y ves cuánto te queda).</p></details>';
   if(!q.allocs.length)h+='<div class="empty">Sin apartados todavía. Agrega diezmo, renta, pagos de tarjeta o ahorro.</div>';
   q.allocs.forEach(a=>{
     const m=allocMonto(a,s.ingreso),inf=s.by[a.id]||{};

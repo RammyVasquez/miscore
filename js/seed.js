@@ -28,6 +28,7 @@ export function seedDemo(){
     fx('Internet',499,'fijo',azul.id,'Servicios',false,1,1),fx('Celular',399,'fijo',azul.id,'Servicios',false,1,2),
     fx('Gasolina',1200,'fijo',azul.id,'Gasolina',true),fx('Gimnasio',450,'fijo','efectivo','Salud',false,1,1),
     Object.assign(fx('Limpieza del hogar',350,'fijo','efectivo','Hogar'),{porQ:true}),
+    Object.assign(fx('Renta',6000,'fijo','efectivo','Hogar',false,1,2),{reparto:'mitad'}),
     fx('Netflix',219,'sub',azul.id,'Servicios'),fx('Spotify',129,'sub',azul.id,'Servicios'),fx('iCloud',49,'sub',azul.id,'Servicios')
   ];
   const al=(nombre,kind,monto,extra)=>Object.assign({id:uid8(),nombre:nombre,kind:kind,monto:monto,pct:0,ref:'',cat:''},extra||{});
