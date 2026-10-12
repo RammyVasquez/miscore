@@ -1,5 +1,5 @@
 // Formularios de alta y edición (apartados, movimientos, tarjetas, metas, fijos).
-import { uid8, round2, num, ymd, ymOf, addMonths, MESES, parseYM } from './util.js';
+import { uid8, round2, num, ymd, ymOf, addMonths, MESES, parseYM, qLabel } from './util.js';
 import { S, touchCfg, touchMonth } from './state.js';
 import { getMonth, roMonth, getQ, txEffect, revertAlloc, msiInfo, valeSaldo } from './logic.js';
 import { ui, drawSheet, openForm, closeSheet, askConfirm, toast, sheet, sheetNote } from './ui.js';
@@ -56,7 +56,9 @@ export function txForm(id,ymHint,preset){
       }
       if(old){const om=getMonth(ymHint);om.tx=om.tx.filter(t=>t.id!==old.id);txEffect(old,-1);touchMonth(ymHint)}
       const t={id:old?old.id:uid8(),tipo:o.tipo,monto:round2(o.monto),cat:o.tipo==='ingreso'?'Ingreso extra':o.cat,nota:o.nota.trim(),f:o.f,medio:o.tipo==='ingreso'?'efectivo':o.medio,ts:old?old.ts:Date.now()};
-      const ym=t.f.slice(0,7);getMonth(ym).tx.push(t);txEffect(t,1);touchMonth(ym);render();toast(old?'Movimiento actualizado':'Movimiento guardado');
+      const ym=t.f.slice(0,7);getMonth(ym).tx.push(t);txEffect(t,1);touchMonth(ym);render();
+      const nq=+t.f.slice(8,10)<=15?1:2,donde=qLabel(ym,nq),otra=ui.route==='quincena'&&(ym!==ui.ym||nq!==ui.q);
+      toast((old?'Movimiento actualizado en la ':'Guardado en la ')+donde+(otra?'. No es la que estás viendo':''));
     },
     onDelete:old?()=>{const om=getMonth(ymHint);om.tx=om.tx.filter(t=>t.id!==old.id);txEffect(old,-1);touchMonth(ymHint);closeSheet();render()}:null
   });

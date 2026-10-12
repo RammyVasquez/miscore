@@ -1,5 +1,5 @@
 // Pantalla: quincena.
-import { esc, money, MESES, parseYM, ic, privacy, sum } from '../util.js';
+import { esc, money, MESES, parseYM, ic, privacy, sum, ymOf, qLabel } from '../util.js';
 import { S } from '../state.js';
 import { qBounds, allocMonto, qSummary, msiMes, fijosQ, esDirecto, cardName, fijoMonto } from '../logic.js';
 import { chipK, txRow } from '../components.js';
@@ -8,6 +8,11 @@ import { ui } from '../ui.js';
 export function vQuincena(){
   const ym=ui.ym,n=ui.q,s=qSummary(ym,n),q=s.q,p=parseYM(ym),b=qBounds(ym,n);
   let h='<div class="qnav"><button class="icon" data-act="q-prev" aria-label="Quincena anterior">‹</button><div><b>'+(n===1?'1ª':'2ª')+' quincena de '+MESES[p.m-1]+'</b><span class="mut">'+p.y+' · del '+(+b[0].slice(8))+' al '+(+b[1].slice(8))+'</span></div><button class="icon" data-act="q-next" aria-label="Quincena siguiente">›</button></div>';
+  const hoy=new Date(),cym=ymOf(hoy),cn=hoy.getDate()<=15?1:2;
+  if(ym!==cym||n!==cn){
+    const pasada=ym<cym||(ym===cym&&n<cn);
+    h+='<div class="demo qwarn"><div><b>Estás viendo la '+qLabel(ym,n)+'</b>, no la actual (la '+qLabel(cym,cn)+'). '+(pasada?'Es una quincena que ya pasó. ':'Todavía no llega. ')+'Cada gasto cuenta en la quincena que le toca por su fecha.</div><div class="btns"><button class="btn sm" data-act="q-hoy">Ir a la actual</button></div></div>';
+  }
   h+='<label class="inc"><span>Sueldo de la quincena</span><input type="'+(privacy.hidden?'password':'number')+'" inputmode="decimal" step="any" autocomplete="off" value="'+esc(q.ingreso||'')+'" placeholder="0" data-chg="q-ingreso"></label>';
   h+='<section class="hero'+(s.libre<0?' neg':'')+'" style="padding:16px 20px"><div class="lbl">Libre</div><div class="big" style="font-size:clamp(40px,11vw,60px)">'+money(s.libre)+'</div>';
   h+='<div class="sub">Ingreso '+money(s.ingreso)+(s.extras?' (incluye '+money(s.extras)+' extra)':'')+' · '+(s.libre<0?'asignaste o gastaste más de lo que ingresa':'plan libre '+money(s.ingreso-s.asignado)+(s.over+s.unb>0?', menos '+money(s.over+s.unb)+' de gasto sin apartado':''))+'</div></section>';

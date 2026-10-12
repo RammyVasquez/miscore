@@ -54,3 +54,5 @@ export const monthIdx=ym=>{const p=parseYM(ym);return p.y*12+p.m};
 // Primer día con ese número de día del mes que sea DESPUÉS de la fecha dada
 export function nextOccAfter(day,date){let y=date.getFullYear(),m=date.getMonth();for(let i=0;i<14;i++){const d=Math.min(day,lastDay(y,m+1));const c=new Date(y,m,d);if(c>date)return c;m++;if(m>11){m=0;y++}}return date}
 export const norm=s=>String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+// "1ª quincena de octubre"
+export const qLabel=(ym,n)=>(n===1?'1ª':'2ª')+' quincena de '+MESES[parseYM(ym).m-1];

@@ -77,6 +77,7 @@ export const ACT={
   'remind-later'(){setMeta({snoozeUntil:Date.now()+3*864e5});render()},
   'hide-demo'(){S.config.demo=false;touchCfg();render()},
   install(){const e=rt.installEvt;if(!e)return;e.prompt();Promise.resolve(e.userChoice).finally(()=>{rt.installEvt=null;render()})},
+  'q-hoy'(){const d=new Date();ui.ym=ymOf(d);ui.q=d.getDate()<=15?1:2;render();window.scrollTo(0,0)},
   'q-prev'(){prevQ();render()},'q-next'(){nextQ();render()},
   'g-prev'(){ui.gym=addMonths(ui.gym,-1);render()},'g-next'(){ui.gym=addMonths(ui.gym,1);render()},
   'r-prev'(){ui.rym=addMonths(ui.rym,-1);render()},'r-next'(){ui.rym=addMonths(ui.rym,1);render()},
