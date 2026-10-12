@@ -1,8 +1,9 @@
 // Pantalla: tarjetas.
 import { esc, money, ymOf, inDays, fdate, sum, ic, MES3, parseYM, round2 } from '../util.js';
 import { S } from '../state.js';
-import { cardPlan, cardInfo, fijoMonto, msiInfo, msiDeTarjeta, msiMes, cardTotal, cardPorVencer, cardEstimado } from '../logic.js';
+import { cardPlan, cardInfo, fijoMonto, msiInfo, msiDeTarjeta, msiMes, cardTotal, cardPorVencer, cardEstimado, objetivoPago, planHastaLimite } from '../logic.js';
 
+const estPartes=est=>{const p=[];if(est.msi>0)p.push('mensualidades a meses ('+money(est.msi)+')');if(est.acum>0&&est.acum>=est.fij)p.push('compras que ya llevas por vencer ('+money(est.acum)+')');else if(est.fij>0)p.push('cargos fijos ('+money(est.fij)+')');return p};
 const mesAnio=ym=>{const p=parseYM(ym);return MES3[p.m-1]+' '+p.y};
 function msiRow(x){
   const m=x.m,i=x.i;
@@ -22,14 +23,14 @@ export function vTarjetas(){
   if(!S.config.tarjetas.length)return h+'<div class="panel empty">Agrega tus tarjetas con su saldo, día de corte y fecha límite de pago.</div>';
   S.config.tarjetas.forEach(c=>{
     const i=cardInfo(c),pl=cardPlan(c,ym),fijo=sum(S.config.fijos.filter(f=>f.medio===c.id),f=>fijoMonto(f,ym));
-    const tot=cardTotal(c),pv=cardPorVencer(c),falta=Math.max(0,round2((+c.saldo||0)-(pl.plan-pl.paid))),est=cardEstimado(c);
+    const tot=cardTotal(c),pv=cardPorVencer(c),obj=objetivoPago(c),aparta=planHastaLimite(c,obj.limite),falta=Math.max(0,round2(obj.monto-aparta)),est=cardEstimado(c);
     h+='<div class="panel card-row" style="border-left-color:'+esc(c.color||'#1D4ED8')+'"><div class="head"><h2>'+esc(c.nombre)+'</h2><div style="text-align:right"><div class="amt" style="font-size:24px">'+money(c.saldo)+'</div><div class="sb">pago para no generar intereses</div></div></div>';
-    h+='<div class="kv"><span>Corte: <b>'+fdate(i.nc)+'</b> ('+inDays(i.dc)+')</span><span class="'+(i.dl<=5&&+c.saldo>0?'due-soon':'')+'">Pagar antes del: <b>'+fdate(i.nl)+'</b> ('+inDays(i.dl)+')</span></div>';
-    h+='<div class="kv"><span>Plan de pago este mes: <b>'+money(pl.plan)+'</b></span><span>Ya pagado: <b>'+money(pl.paid)+'</b></span>'+(fijo?'<span>Cargos fijos de este mes: <b>'+money(fijo)+'</b></span>':'')+'</div>';
+    h+='<div class="kv"><span>Corte: <b>'+fdate(i.nc)+'</b> ('+inDays(i.dc)+')</span>'+(+c.saldo>0?'<span class="'+(i.dl<=5?'due-soon':'')+'">Pagar antes del: <b>'+fdate(i.nl)+'</b> ('+inDays(i.dl)+')</span>':'<span>Sin pago pendiente ahora</span>')+'</div>';
+    h+='<div class="kv"><span>'+(+c.saldo>0?'Apartado para pagarla':'Apartado para su próximo pago')+': <b>'+money(aparta)+'</b></span><span>Ya pagado este mes: <b>'+money(pl.paid)+'</b></span>'+(fijo?'<span>Cargos fijos de este mes: <b>'+money(fijo)+'</b></span>':'')+'</div>';
     if(pv>0)h+='<div class="kv"><span>Saldo total: <b>'+money(tot)+'</b></span><span>Por vencer: <b>'+money(pv)+'</b></span></div>';
-    if(+c.saldo>0&&falta>0)h+='<div class="kv"><span class="due-soon">Falta apartar para pagarla: <b>'+money(falta)+'</b></span></div>';
+    if(falta>0)h+='<div class="kv"><span class="'+(+c.saldo>0?'due-soon':'')+'">'+(+c.saldo>0?'Falta apartar para pagarla':'Falta apartar para su próximo pago')+': <b>'+money(falta)+'</b></span></div>';
     if(pl.plan>0)h+='<div class="bar ok"><i style="width:'+Math.min(100,Math.round(pl.paid/pl.plan*100))+'%"></i></div>';
-    if(est.total>0)h+='<div class="est"><div>Próximo pago estimado: <b>≈ '+money(est.total)+'</b></div><div class="sb">Corte del '+fdate(est.corte)+'; se pagaría antes del '+fdate(est.limite)+'. Incluye mensualidades a meses ('+money(est.msi)+') y cargos fijos ('+money(est.fij)+'). No incluye compras nuevas.</div></div>';
+    if(est.total>0)h+='<div class="est"><div>Próximo pago estimado: <b>≈ '+money(est.total)+'</b></div><div class="sb">Corte del '+fdate(est.corte)+'; se pagaría antes del '+fdate(est.limite)+'. Incluye '+estPartes(est).join(' y ')+'. No incluye lo que compres de aquí al corte.</div></div>';
     const ms=msiDeTarjeta(c.id).map(m=>({m:m,i:msiInfo(m,ym)})).sort((a,b)=>((a.i.estado==='terminada')-(b.i.estado==='terminada'))||(a.i.faltan-b.i.faltan));
     if(ms.length){
       const mes=msiMes(c.id,ym),faltaMsi=sum(ms,x=>x.i.faltaTotal);

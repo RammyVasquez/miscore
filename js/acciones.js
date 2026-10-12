@@ -1,13 +1,12 @@
 // "Qué hacer ahora": lo más importante de esta quincena, de lo más urgente a lo menos.
 import { money, ymOf, fdate, inDays, round2, sum } from './util.js';
 import { S } from './state.js';
-import { qSummary, qBounds, cardInfo, cardPlan, msiInfo, fijoMonto } from './logic.js';
+import { qSummary, qBounds, cardInfo, msiInfo, fijoMonto, objetivoPago, planHastaLimite } from './logic.js';
 
-// Cuánto falta apartar para pagar una tarjeta antes de su fecha límite
+// Cuánto falta apartar para pagar una tarjeta antes de su fecha límite (con lo apartado en las quincenas que llegan a tiempo)
 export function faltaApartar(c) {
-  const i = cardInfo(c), a = ymOf(new Date()), b = ymOf(i.nl);
-  const pl = cardPlan(c, a), pl2 = b !== a ? cardPlan(c, b) : { plan: 0, paid: 0 };
-  return round2(Math.max(0, (+c.saldo || 0) - ((pl.plan - pl.paid) + (pl2.plan - pl2.paid))));
+  const o = objetivoPago(c);
+  return round2(Math.max(0, o.monto - planHastaLimite(c, o.limite)));
 }
 
 export function accionesAhora() {
@@ -15,11 +14,16 @@ export function accionesAhora() {
   const endDay = +b[1].slice(8), left = endDay - now.getDate() + 1, out = [];
   const add = (tono, titulo, detalle, act, r, label, id) => out.push({ tono: tono, titulo: titulo, detalle: detalle, act: act, r: r, label: label, id: id });
 
-  // 1) Tarjetas: lo que hay que pagar antes de su fecha límite
-  S.config.tarjetas.filter(c => +c.saldo > 0).forEach(c => {
-    const i = cardInfo(c), falta = faltaApartar(c), urg = i.dl <= 3 ? 'bad' : i.dl <= 7 ? 'warn' : 'info';
-    if (falta > 0) add(urg, 'Aparta ' + money(falta) + ' para pagar ' + c.nombre, 'Pagar antes del ' + fdate(i.nl) + ' (' + inDays(i.dl) + '). Pago para no generar intereses: ' + money(c.saldo) + '.', 'apartar-tarjeta', null, 'Apartar ' + money(falta), c.id);
-    else add(urg, 'Paga ' + c.nombre + ': ' + money(c.saldo), 'Antes del ' + fdate(i.nl) + ' (' + inDays(i.dl) + '). Ya lo tienes apartado; al pagarla, marca el apartado con la palomita.', 'go', 'quincena', 'Ver apartado');
+  // 1) Tarjetas: lo que hay que pagar antes de su fecha límite (o ir apartando para el siguiente pago)
+  S.config.tarjetas.forEach(c => {
+    const o = objetivoPago(c), falta = faltaApartar(c);
+    if (+c.saldo > 0) {
+      const i = cardInfo(c), urg = i.dl <= 3 ? 'bad' : i.dl <= 7 ? 'warn' : 'info';
+      if (falta > 0) add(urg, 'Aparta ' + money(falta) + ' para pagar ' + c.nombre, 'Pagar antes del ' + fdate(i.nl) + ' (' + inDays(i.dl) + '). Pago para no generar intereses: ' + money(c.saldo) + '.', 'apartar-tarjeta', null, 'Apartar ' + money(falta), c.id);
+      else add(urg, 'Paga ' + c.nombre + ': ' + money(c.saldo), 'Antes del ' + fdate(i.nl) + ' (' + inDays(i.dl) + '). Ya lo tienes apartado; al pagarla, marca el apartado con la palomita.', 'go', 'quincena', 'Ver apartado');
+    } else if (o.monto > 0 && falta > 0) {
+      add('info', 'Ve apartando para ' + c.nombre + ': ≈ ' + money(o.monto), 'Se pagaría antes del ' + fdate(o.limite) + ' (' + inDays(o.dl) + '). Llevas apartados ' + money(planHastaLimite(c, o.limite)) + '; te faltan ' + money(falta) + '.', 'apartar-tarjeta', null, 'Apartar ' + money(falta), c.id);
+    }
   });
   // 2) Te pasaste de lo planeado
   if (s.libre < 0) add('bad', 'Te pasaste ' + money(-s.libre) + ' de lo planeado', 'Revisa tus apartados o los gastos que no tienen apartado.', 'go', 'quincena', 'Revisar');

@@ -89,10 +89,33 @@ export const msiMes = (id, ym) => sum(msiDeTarjeta(id).filter(m => msiInfo(m, ym
 export const cardTotal=c=>Math.max(+c.total||0,+c.saldo||0);
 export const cardPorVencer=c=>round2(Math.max(0,cardTotal(c)-(+c.saldo||0)));
 // Lo que se vería en el pago de la siguiente fecha de corte: mensualidades a meses + cargos fijos de esa tarjeta
+// Mensualidades a meses que todavía NO se han cobrado en el saldo de ahora: las del mes del próximo corte en adelante
+export const msiDesde=(cardId,ym)=>round2(sum(msiDeTarjeta(cardId),m=>msiInfo(m,ym).faltaTotal));
+// Lo que se pagaría en la siguiente fecha límite después del próximo corte.
+// = mensualidades de ese corte + lo mayor entre (lo que ya llevas "por vencer" sin contar mensualidades) y (los cargos fijos de la tarjeta)
 export function cardEstimado(c){
   const i=cardInfo(c),ymE=ymOf(i.nc);
   const msi=msiMes(c.id,ymE),fij=round2(sum(S.config.fijos.filter(f=>f.medio===c.id),f=>fijoMonto(f,ymE)));
-  return {ym:ymE,corte:i.nc,limite:nextOccAfter(+c.limite||1,i.nc),msi:msi,fij:fij,total:round2(msi+fij)};
+  const acum=round2(Math.max(0,cardPorVencer(c)-msiDesde(c.id,ymE)));   // las mensualidades ya vienen dentro de lo "por vencer": no se cuentan dos veces
+  return {ym:ymE,corte:i.nc,limite:nextOccAfter(+c.limite||1,i.nc),msi:msi,fij:fij,acum:acum,total:round2(msi+Math.max(acum,fij))};
+}
+// Lo que ya tienes apartado (y sin marcar como pagado) para una tarjeta en las quincenas cuyo dinero llega antes de la fecha límite
+export function planHastaLimite(c,limite){
+  const hoy=ymd(new Date()),lim=ymd(limite),fin=ymOf(limite);let ym=ymOf(new Date()),total=0;
+  for(let k=0;k<6&&ym<=fin;k++){
+    [1,2].forEach(n=>{
+      const b=qBounds(ym,n);if(b[1]<hoy||b[0]>lim)return;
+      const q=roMonth(ym)['q'+n];if(!q)return;const base=qBase(ym,n);
+      total+=sum(q.allocs.filter(x=>x.kind==='tarjeta'&&x.ref===c.id&&!x.done),x=>allocMonto(x,base));
+    });
+    ym=addMonths(ym,1);
+  }
+  return round2(total);
+}
+// Qué hay que pagar y cuándo: el pago de ahora si hay saldo, o el estimado del siguiente corte si no
+export function objetivoPago(c){
+  if(+c.saldo>0){const i=cardInfo(c);return {monto:+c.saldo,limite:i.nl,dl:i.dl,estimado:false}}
+  const e=cardEstimado(c);return {monto:e.total,limite:e.limite,dl:daysTo(e.limite),estimado:true};
 }
 
 // ---- Ingresos extra que se repiten (bono mensual, etc.) ----
