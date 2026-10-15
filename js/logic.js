@@ -93,7 +93,15 @@ export const fijosQ=(ym,n)=>S.config.fijos.map(f=>({f:f,m:fijoMontoQ(f,ym,n)})).
 export const metaObj=m=>(m.desglose&&m.desglose.length)?sum(m.desglose,d=>+d.m||0):(+m.objetivo||0);
 export function revertAlloc(a){
   if(!a.done)return;
-  if(a.kind==='tarjeta'){const c=S.config.tarjetas.find(c=>c.id===a.ref);if(c){c.saldo=round2((+c.saldo||0)+(+a.aplicado||0));if(a.aplT){c.total=round2((+c.total||0)+a.aplT)}touchCfg()}delete a.aplT}
+  if(a.kind==='tarjeta'){
+    const c=S.config.tarjetas.find(c=>c.id===a.ref);
+    if(c){
+      if(a.movido)c.apartado=round2(Math.max(0,(+c.apartado||0)-a.movido));   // lo movido a su apartado
+      else{c.saldo=round2((+c.saldo||0)+(+a.aplicado||0));if(a.aplT)c.total=round2((+c.total||0)+a.aplT)}   // marcas de antes: eran "ya pagué"
+      touchCfg();
+    }
+    delete a.aplT;delete a.movido;
+  }
   if(a.kind==='meta'){const m=S.config.metas.find(c=>c.id===a.ref);if(m){m.ahorrado=round2((+m.ahorrado||0)-(+a.aplicado||0));touchCfg()}}
 }
 
@@ -233,3 +241,6 @@ export function autoAllocs(ym, n) {
   return out;
 }
 export const allAllocs = (ym, n) => { const q = roMonth(ym)['q' + n]; return (q ? q.allocs : []).concat(autoAllocs(ym, n)); };
+
+// Lo que ya tienes en el apartado de tu banco para pagar una tarjeta
+export const apartadoTarjeta=c=>round2(Math.max(0,+c.apartado||0));

@@ -24,13 +24,14 @@ function paso1(w) {
 }
 
 function paso2(w) {
-  const filas = w.tarjetas.map(c => '<div class="wz-row"><div class="grow"><div class="nm">' + esc(c.nombre) + '</div><div class="sb">Pago sin intereses ' + money(c.saldo) + (c.total > c.saldo ? ' · total ' + money(c.total) : '') + ' · corte el día ' + c.corte + ' · pagar antes del día ' + c.limite + '</div></div>' + quitar('wiz-del-card', c.id, c.nombre) + '</div>').join('');
+  const filas = w.tarjetas.map(c => '<div class="wz-row"><div class="grow"><div class="nm">' + esc(c.nombre) + '</div><div class="sb">Pago sin intereses ' + money(c.saldo) + (c.total > c.saldo ? ' · total ' + money(c.total) : '') + (c.apartado > 0 ? ' · apartado ' + money(c.apartado) : '') + ' · corte el día ' + c.corte + ' · pagar antes del día ' + c.limite + '</div></div>' + quitar('wiz-del-card', c.id, c.nombre) + '</div>').join('');
   return titulo('¿Qué tarjetas usas?', 'Así te avisamos cuánto apartar y cuándo pagar para no generar intereses. Si no usas tarjetas, omite este paso.')
     + (filas ? '<div class="wl-ask">' + filas + '</div>' : '')
     + '<div class="wl-ask"><h2>' + (w.tarjetas.length ? 'Agregar otra tarjeta' : 'Agregar una tarjeta') + '</h2>'
     + inp('fc.nombre', 'Nombre', { type: 'text', ph: 'BBVA, Rappi…' })
     + inp('fc.saldo', 'Pago para no generar intereses', { ph: '3962', hint: 'Es lo que dice tu estado de cuenta que debes pagar antes de la fecha límite. Si ya la pagaste, déjalo en 0.' })
     + inp('fc.total', 'Saldo total de la tarjeta (opcional)', { ph: '5329' })
+    + inp('fc.apartado', 'Ya tengo apartado para pagarla (opcional)', { ph: '1700', hint: 'Lo que ya tienes en tu apartado del banco para esta tarjeta.' })
     + inp('fc.corte', 'Día de corte (1 a 31)', { ph: '5' }) + inp('fc.limite', 'Día límite de pago (1 a 31)', { ph: '26' })
     + '<button class="btn" data-act="wiz-add-card">Agregar tarjeta</button></div>';
 }

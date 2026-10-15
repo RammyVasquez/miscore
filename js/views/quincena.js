@@ -1,7 +1,7 @@
 // Pantalla: quincena.
 import { esc, money, MESES, MES3, parseYM, ic, privacy, sum, qLabel } from '../util.js';
 import { S } from '../state.js';
-import { quincenaActual, qBounds, allocMonto, qSummary, msiMes, fijosQ, esDirecto, cardName, fijoMonto } from '../logic.js';
+import { apartadoTarjeta, quincenaActual, qBounds, allocMonto, qSummary, msiMes, fijosQ, esDirecto, cardName, fijoMonto } from '../logic.js';
 import { chipK, txRow } from '../components.js';
 import { ui } from '../ui.js';
 
@@ -34,7 +34,7 @@ export function vQuincena(){
     h+='<div class="grow"><div class="nm">'+esc(a.nombre)+chipK(a.kind)+(a.fijoId?'<span class="chip">Automático</span>':'')+((+a.pct>0)?'<span class="chip">'+a.pct+'%</span>':'')+'</div>';
     if(a.kind==='gasto'&&inf.spent!=null){const r=m?inf.spent/m:0;h+='<div class="bar '+(r>1?'bad':r>.8?'warn':'')+'"><i style="width:'+Math.min(100,Math.round(r*100))+'%"></i></div><div class="sb">Gastado '+money(inf.spent)+' de '+money(m)+'</div>'}
     else if(a.fijoId){const fj=S.config.fijos.find(x=>x.id===a.fijoId),tot=fj?fijoMonto(fj,ym):0;h+='<div class="sb">Gasto fijo · se aparta solo'+((fj&&fj.reparto==='mitad')?' · la mitad de '+money(tot)+(+fj.q>0?', se paga todo en la '+(+fj.q===1?'1ª':'2ª')+' quincena'+(+fj.q===n?' ('+money(tot)+' hoy)':''):''):'')+(a.done?' · hecho':'')+'</div>'}
-    else if(a.kind==='tarjeta'||a.kind==='meta'){const ref=a.kind==='tarjeta'?S.config.tarjetas.find(c=>c.id===a.ref):S.config.metas.find(c=>c.id===a.ref);h+='<div class="sb">'+(ref?esc(ref.nombre):'Sin '+(a.kind==='tarjeta'?'tarjeta':'meta')+' elegida')+(a.kind==='tarjeta'&&ref&&msiMes(ref.id,ym)>0?' · a meses este mes: '+money(msiMes(ref.id,ym)):'')+(a.done?' · aplicado':'')+'</div>'}
+    else if(a.kind==='tarjeta'||a.kind==='meta'){const ref=a.kind==='tarjeta'?S.config.tarjetas.find(c=>c.id===a.ref):S.config.metas.find(c=>c.id===a.ref);h+='<div class="sb">'+(ref?esc(ref.nombre):'Sin '+(a.kind==='tarjeta'?'tarjeta':'meta')+' elegida')+(a.kind==='tarjeta'&&ref&&msiMes(ref.id,ym)>0?' · a meses este mes: '+money(msiMes(ref.id,ym)):'')+(a.kind==='tarjeta'&&ref?' · llevas '+money(apartadoTarjeta(ref))+' apartados':'')+(a.done?(a.kind==='tarjeta'?' · movido a tu apartado':' · aplicado'):'')+'</div>'}
     h+='</div><div class="amt">'+money(m)+'</div><span class="pen">'+ic('edit')+'</span></div>';
   });
   h+='<div class="btns"><button class="btn ghost sm" data-act="copy-prev">Copiar apartados de la quincena anterior</button><button class="btn ghost sm" data-act="save-template">Usar esta como plantilla</button></div></div>';

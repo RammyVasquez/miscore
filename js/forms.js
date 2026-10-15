@@ -1,7 +1,7 @@
 // Formularios de alta y edición (apartados, movimientos, tarjetas, metas, fijos).
-import { uid8, round2, num, ymd, ymOf, addMonths, MESES, parseYM, qLabel } from './util.js';
+import { uid8, round2, num, ymd, ymOf, addMonths, MESES, parseYM, qLabel, money } from './util.js';
 import { S, touchCfg, touchMonth } from './state.js';
-import { getMonth, roMonth, getQ, txEffect, revertAlloc, msiInfo, valeSaldo, quincenaDeFecha } from './logic.js';
+import { getMonth, roMonth, getQ, txEffect, revertAlloc, msiInfo, valeSaldo, quincenaDeFecha, apartadoTarjeta } from './logic.js';
 import { ui, drawSheet, openForm, closeSheet, askConfirm, toast, sheet, sheetNote } from './ui.js';
 import { render } from './render.js';
 
@@ -12,18 +12,22 @@ export function allocForm(id){
   const q=getQ(ui.ym,ui.q),a=id?q.allocs.find(x=>x.id===id):null;
   openForm({
     title:a?'Editar apartado':'Nuevo apartado',
-    values:a?{nombre:a.nombre,kind:a.kind,ref:a.ref||'',cat:a.cat||S.config.cats[0],monto:a.monto||'',pct:a.pct||''}:{nombre:'',kind:'gasto',ref:'',cat:S.config.cats[0]||'Otros',monto:'',pct:''},
+    values:a?{nombre:a.nombre,kind:a.kind,ref:a.ref||'',cat:a.cat||S.config.cats[0],monto:a.monto||'',pct:a.pct||'',metaNombre:a.nombre||'Ahorro general',metaAhorrado:''}:{nombre:'',kind:'gasto',ref:'',cat:S.config.cats[0]||'Otros',monto:'',pct:'',metaNombre:'Ahorro general',metaAhorrado:''},
     fields:[
       {k:'nombre',label:'Nombre',req:true},
       {k:'kind',label:'Tipo',type:'select',re:true,opts:[['gasto','Gasto con tope (mandado, salidas…)'],['tarjeta','Pago a tarjeta'],['meta','Ahorro o meta'],['diezmo','Diezmo'],['pago','Otro pago (renta, servicio…)']]},
       {k:'ref',label:'Tarjeta',type:'select',opts:()=>[['','Elegir…']].concat(cardOpts()),when:v=>v.kind==='tarjeta'},
-      {k:'ref',label:'Meta',type:'select',opts:()=>[['','Elegir…']].concat(S.config.metas.map(m=>[m.id,m.nombre])),when:v=>v.kind==='meta'},
+      {k:'ref',label:'Meta',type:'select',re:true,opts:()=>[['','Elegir…']].concat(S.config.metas.map(m=>[m.id,m.nombre])).concat([['__nueva','+ Crear una meta nueva con mi ahorro']]),when:v=>v.kind==='meta'},
+      {k:'metaNombre',label:'Nombre de la meta',when:v=>v.kind==='meta'&&v.ref==='__nueva'},
+      {k:'metaAhorrado',label:'¿Cuánto llevas ahorrado?',type:'number',hint:'Sin contar lo de esta quincena. Escribe lo que tienes hoy en tu apartado de ahorro; cada vez que marques este apartado, se suma.',when:v=>v.kind==='meta'&&v.ref==='__nueva'},
       {k:'cat',label:'Categoría que cuenta contra este tope',type:'select',opts:catOpts,when:v=>v.kind==='gasto'},
       {k:'monto',label:'Monto',type:'number'},
       {k:'pct',label:'O porcentaje del ingreso',type:'number',hint:'Si pones un porcentaje, se usa en lugar del monto.'}
     ],
     onSubmit:o=>{
-      const d={nombre:o.nombre.trim(),kind:o.kind,ref:(o.kind==='tarjeta'||o.kind==='meta')?o.ref:'',cat:o.kind==='gasto'?o.cat:'',monto:o.monto,pct:o.pct>0?o.pct:0};
+      let ref=(o.kind==='tarjeta'||o.kind==='meta')?o.ref:'';
+      if(o.kind==='meta'&&o.ref==='__nueva'){const meta={id:uid8(),nombre:String(o.metaNombre||'').trim()||'Ahorro general',objetivo:0,ahorrado:round2(o.metaAhorrado),fecha:'',desglose:[]};S.config.metas.push(meta);ref=meta.id;touchCfg()}
+      const d={nombre:o.nombre.trim(),kind:o.kind,ref:ref,cat:o.kind==='gasto'?o.cat:'',monto:o.monto,pct:o.pct>0?o.pct:0};
       if(a)Object.assign(a,d);else q.allocs.push(Object.assign({id:uid8(),done:false},d));
       touchMonth(ui.ym);render();
     },
@@ -68,18 +72,19 @@ export function cardForm(id){
   const c=id?S.config.tarjetas.find(x=>x.id===id):null;
   openForm({
     title:c?'Editar tarjeta':'Nueva tarjeta',
-    values:c?{nombre:c.nombre,saldo:c.saldo,total:c.total||'',corte:c.corte,limite:c.limite,color:c.color||'#1D4ED8'}:{nombre:'',saldo:'',total:'',corte:'',limite:'',color:'#1D4ED8'},
+    values:c?{nombre:c.nombre,saldo:c.saldo,total:c.total||'',apartado:c.apartado||'',corte:c.corte,limite:c.limite,color:c.color||'#1D4ED8'}:{nombre:'',saldo:'',total:'',apartado:'',corte:'',limite:'',color:'#1D4ED8'},
     fields:[
       {k:'nombre',label:'Nombre',req:true},
       {k:'saldo',label:'Pago para no generar intereses',type:'number',hint:'Es lo que dice tu estado de cuenta que debes pagar antes de la fecha límite.'},
       {k:'total',label:'Saldo total de la tarjeta (opcional)',type:'number',hint:'Si lo escribes, la diferencia se muestra como "por vencer": compras y mensualidades que todavía no se cobran.'},
+      {k:'apartado',label:'Ya tengo apartado para pagarla (opcional)',type:'number',hint:'Lo que ya tienes en tu apartado del banco para esta tarjeta, sin contar lo de esta quincena. Cada vez que marcas su apartado en Quincena, se suma aquí.'},
       {k:'corte',label:'Día de corte (1 a 31)',type:'number',req:true},
       {k:'limite',label:'Día límite de pago (1 a 31)',type:'number',req:true},
       {k:'color',label:'Color',type:'select',opts:COLORS}
     ],
     onSubmit:o=>{
       if(o.corte<1||o.corte>31||o.limite<1||o.limite>31){sheet.cur.err='Los días deben estar entre 1 y 31';drawSheet();return false}
-      const d={nombre:o.nombre.trim(),saldo:round2(o.saldo),total:round2(o.total),corte:Math.round(o.corte),limite:Math.round(o.limite),color:o.color};
+      const d={nombre:o.nombre.trim(),saldo:round2(o.saldo),total:round2(o.total),apartado:round2(o.apartado),corte:Math.round(o.corte),limite:Math.round(o.limite),color:o.color};
       if(c)Object.assign(c,d);else S.config.tarjetas.push(Object.assign({id:uid8()},d));
       touchCfg();render();
     },
@@ -226,5 +231,29 @@ export function valeForm(id) {
       touchCfg(); render();
     },
     onDelete: v ? () => askConfirm('Se quitarán estos vales. Los gastos que registraste con ellos no se borran.', 'Eliminar vales', () => { S.config.vales = S.config.vales.filter(x => x.id !== v.id); touchCfg(); render(); }) : null
+  });
+}
+
+// "Ya pagué la tarjeta": baja lo que debes y lo que tenías apartado, como en tu banco
+export function pagoForm(id) {
+  const c = S.config.tarjetas.find(x => x.id === id); if (!c) return;
+  const bal = apartadoTarjeta(c);
+  openForm({
+    title: 'Ya pagué ' + c.nombre,
+    note: 'Pago para no generar intereses: ' + money(c.saldo) + '. Tienes apartado: ' + money(bal) + '. Al registrar el pago baja lo que debes y lo que tenías apartado.',
+    values: { monto: +c.saldo > 0 ? c.saldo : (bal || '') },
+    fields: [{ k: 'monto', label: '¿Cuánto pagaste?', type: 'number', req: true }],
+    submit: 'Registrar pago',
+    onSubmit: o => {
+      const P = round2(o.monto);
+      if (!(P > 0)) { sheetNote('err', 'El monto debe ser mayor a cero.'); return false; }
+      const de = Math.min(P, apartadoTarjeta(c));
+      c.saldo = round2(Math.max(0, (+c.saldo || 0) - P));
+      if (+c.total > 0) c.total = round2(Math.max(0, c.total - P));
+      c.apartado = round2(apartadoTarjeta(c) - de);
+      c.ult = { f: ymd(new Date()), monto: P };
+      touchCfg(); render();
+      toast('Listo: registraste el pago de ' + money(P) + ' a ' + c.nombre + (de > 0 ? '. Salieron ' + money(de) + ' de tu apartado' : ''));
+    }
   });
 }

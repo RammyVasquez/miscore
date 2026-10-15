@@ -24,7 +24,7 @@ export function setPath(path, val) {
 }
 
 // Lo que sugerimos apartar cada quincena para pagar una tarjeta: la mitad de su pago, redondeada
-export const sugerido = c => { const s = num(c.saldo); return s > 0 ? Math.ceil(s / 2 / 50) * 50 : 0; };
+export const sugerido = c => { const s = Math.max(0, num(c.saldo) - num(c.apartado)); return s > 0 ? Math.ceil(s / 2 / 50) * 50 : 0; };
 export function ensurePagos() { const w = wiz(); w.tarjetas.forEach(c => { if (w.pago[c.id] === undefined) w.pago[c.id] = String(sugerido(c)); }); saveWiz(); }
 
 // ---- Tarjetas y gastos fijos: agregar / quitar ----
@@ -34,7 +34,7 @@ export function addCard() {
   if (!nombre) return 'Escribe el nombre de la tarjeta.';
   const corte = Math.round(num(f.corte)), lim = Math.round(num(f.limite));
   if (corte < 1 || corte > 31 || lim < 1 || lim > 31) return 'Los días de corte y de pago deben estar entre 1 y 31.';
-  w.tarjetas.push({ id: uid8(), nombre: nombre, saldo: round2(num(f.saldo)), total: round2(num(f.total)), corte: corte, limite: lim, color: COLORES[w.tarjetas.length % COLORES.length] });
+  w.tarjetas.push({ id: uid8(), nombre: nombre, saldo: round2(num(f.saldo)), total: round2(num(f.total)), apartado: round2(num(f.apartado)), corte: corte, limite: lim, color: COLORES[w.tarjetas.length % COLORES.length] });
   w.fc = {}; saveWiz(); return '';
 }
 export function delCard(id) { const w = wiz(); w.tarjetas = w.tarjetas.filter(c => c.id !== id); delete w.pago[id]; w.fijos.forEach(x => { if (x.medio === id) x.medio = 'efectivo'; }); saveWiz(); }
@@ -73,7 +73,7 @@ const catDe = n => { const s = norm(n); return (s.indexOf('renta') >= 0 || s.ind
 export function finish() {
   const w = wiz(), c = blankConfig(), hoy = ymOf(new Date());
   c.onboarded = true; c.ingresoQ = round2(num(w.ingreso)); c.porPago = w.modoQ === 'pago'; c.diaPago = 15; c.diaPago2 = 0;
-  c.tarjetas = w.tarjetas.map(t => ({ id: t.id, nombre: t.nombre, saldo: t.saldo, total: t.total || 0, corte: t.corte, limite: t.limite, color: t.color }));
+  c.tarjetas = w.tarjetas.map(t => ({ id: t.id, nombre: t.nombre, saldo: t.saldo, total: t.total || 0, apartado: t.apartado || 0, corte: t.corte, limite: t.limite, color: t.color }));
   c.fijos = w.fijos.map(x => ({ id: x.id, nombre: x.nombre, monto: x.monto, tipo: 'fijo', medio: x.medio, cat: catDe(x.nombre), variable: false, porQ: x.cada === 'q', cada: 1, q: x.cada === 'q' ? 0 : (+x.q || 0), reparto: x.reparto === 'mitad' ? 'mitad' : 'junto', auto: true, desde: '', vals: {} }));
   if (num(w.bono) > 0) c.ingresosRec = [{ id: uid8(), nombre: 'Bono', monto: round2(num(w.bono)), cada: '1', q: +w.bonoQ || 2, desde: hoy, hasta: '', vals: {} }];
   const al = (nombre, kind, monto, extra) => Object.assign({ id: uid8(), nombre: nombre, kind: kind, monto: monto, pct: 0, ref: '', cat: '' }, extra || {});

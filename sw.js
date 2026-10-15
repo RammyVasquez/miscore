@@ -1,7 +1,7 @@
 // Service worker: la app abre sin conexión.
 // Estrategia: red primero (siempre ves la última versión) y, si no hay internet, lo guardado.
 // Sube el número de VERSION si cambias la lista de archivos.
-const VERSION = 'miscore-v15';
+const VERSION = 'miscore-v16';
 const SHELL = [
   "./",
   "index.html",

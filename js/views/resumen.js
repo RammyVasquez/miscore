@@ -52,7 +52,7 @@ export function vResumen() {
   // ---- Por pagar ----
   const apartados = s.allocs.filter(a => a.kind !== 'gasto').slice().sort((a, b2) => (a.done ? 1 : 0) - (b2.done ? 1 : 0));
   const pend = sum(apartados.filter(a => !a.done), a => plan(a.id));
-  const pagar = '<div class="panel"><div class="head"><h2>Por pagar esta quincena</h2>' + (apartados.some(a => !a.done) ? '<span class="amt">' + money(pend) + '</span>' : '') + '</div>'
+  const pagar = '<div class="panel"><div class="head"><h2>Por apartar esta quincena</h2>' + (apartados.some(a => !a.done) ? '<span class="amt">' + money(pend) + '</span>' : '') + '</div>'
     + (apartados.length ? apartados.slice(0, 8).map(a => {
       const ref = a.kind === 'tarjeta' ? S.config.tarjetas.find(c => c.id === a.ref) : a.kind === 'meta' ? S.config.metas.find(c => c.id === a.ref) : null;
       return '<div class="row' + (a.done ? ' done' : '') + '" data-act="go" data-r="quincena"><button class="chk" data-act="toggle-alloc" data-id="' + a.id + '" data-ym="' + ym + '" data-q="' + n + '" aria-pressed="' + (!!a.done) + '" aria-label="Marcar ' + esc(a.nombre) + ' como hecho">' + ic('check') + '</button>'

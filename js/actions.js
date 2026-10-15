@@ -10,7 +10,7 @@ import { faltaApartar } from './acciones.js';
 import { wiz, saveWiz, setPath, addCard, delCard, addFijo, delFijo, autoAgregar, finish as wizFinish, PASOS } from './wizard.js';
 import { wizRefresh } from './views/wizard.js';
 import { render } from './render.js';
-import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm, msiForm, recForm, valeForm } from './forms.js';
+import { allocForm, txForm, cardForm, metaForm, metaAport, fijoForm, msiForm, recForm, valeForm, pagoForm } from './forms.js';
 import { seedDemo } from './seed.js';
 
 export function toggleAlloc(id,ymArg,qArg){
@@ -19,7 +19,7 @@ export function toggleAlloc(id,ymArg,qArg){
   const q=getQ(Y,N),a=q.allocs.find(x=>x.id===id);if(!a)return;
   if(!a.done){
     a.done=true;const m=allocMonto(a,qBase(Y,N));a.aplicado=m;
-    if(a.kind==='tarjeta'){const c=S.config.tarjetas.find(c=>c.id===a.ref);if(c){const red=Math.min(+c.saldo||0,m);c.saldo=round2((+c.saldo||0)-red);if(+c.total>0){c.total=round2(Math.max(0,c.total-red));a.aplT=red}a.aplicado=red;touchCfg()}}
+    if(a.kind==='tarjeta'){const c=S.config.tarjetas.find(c=>c.id===a.ref);if(c){a.movido=m;c.apartado=round2((+c.apartado||0)+m);touchCfg()}}
     else if(a.kind==='meta'){const g=S.config.metas.find(c=>c.id===a.ref);if(g){g.ahorrado=round2((+g.ahorrado||0)+m);touchCfg()}}
   }else{revertAlloc(a);a.done=false;delete a.aplicado}
   touchMonth(Y);render();
@@ -125,6 +125,7 @@ export const ACT={
   'edit-rec'(el){if(el.dataset.ym)ui.ym=el.dataset.ym;recForm(el.dataset.id)},
   'add-vale'(){valeForm(null)},'edit-vale'(el){valeForm(el.dataset.id)},
   'vale-gasto'(el){txForm(null,null,{medio:el.dataset.id})},
+  'pagar-tarjeta'(el){pagoForm(el.dataset.id)},
   'add-msi'(el){if(!S.config.tarjetas.length){toast('Primero agrega una tarjeta');return}msiForm(null,el.dataset.id)},
   'edit-msi'(el){msiForm(el.dataset.id)},
   'add-fijo'(){fijoForm(null)},'edit-fijo'(el){if(el.dataset.ym)ui.fym=el.dataset.ym;fijoForm(el.dataset.id)},
