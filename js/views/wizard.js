@@ -18,8 +18,9 @@ function paso1(w) {
   return titulo('¿Cuánto cobras por quincena?', 'Con esto calculamos cuánto te queda libre después de tus apartados. Podrás cambiarlo cuando quieras.')
     + '<div class="wl-ask"><label for="z_ingreso" class="wl-lbl">Ingreso por quincena</label><div class="money-in"><span>$</span><input id="z_ingreso" class="bigin" data-wiz="ingreso" type="number" inputmode="decimal" step="any" placeholder="12000" autocomplete="off" value="' + esc(w.ingreso) + '"></div>'
     + '<div class="chips" aria-label="Montos comunes">' + [8000, 10000, 12000, 15000, 20000].map(v => '<button type="button" class="chipbtn" data-act="wiz-amount" data-v="' + v + '">$' + v.toLocaleString('es-MX') + '</button>').join('') + '</div></div>'
+    + '<div class="wl-ask"><h2>¿Cuándo empieza tu quincena?</h2>' + sel('modoQ', 'Mi quincena cambia…', [['cal', 'El 1 y el 16 (del 1 al 15 y del 16 al fin de mes)'], ['pago', 'El día que me pagan (el 15 y el último día del mes)']], false, 'Si te pagan el 15 y a fin de mes, elige la segunda: así el dinero de hoy ya cuenta en la quincena nueva.') + '</div>'
     + '<div class="wl-ask"><h2>¿Tienes un bono o ingreso que llega cada mes? (opcional)</h2>' + inp('bono', 'Monto del bono', { ph: '1400' })
-    + sel('bonoQ', '¿En qué quincena lo recibes?', [['2', '2ª quincena (días 16 al fin de mes)'], ['1', '1ª quincena (días 1 al 15)']], false, 'Si te lo pagan el día 15, normalmente sirve para la 2ª quincena.') + '</div>';
+    + sel('bonoQ', '¿En qué quincena lo recibes?', [['2', '2ª quincena (días 16 al fin de mes)'], ['1', '1ª quincena (días 1 al 15)']], false, 'Elige la quincena en que cae la fecha en que te lo pagan. Por ejemplo, si te llega el 6 o el 7, es la 1ª quincena.') + '</div>';
 }
 
 function paso2(w) {

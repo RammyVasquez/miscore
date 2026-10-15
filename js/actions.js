@@ -3,7 +3,7 @@ import { $, ic, uid8, round2, num, ymd, ymOf, MESES, parseYM, addMonths, clean, 
 import { S, dirty, typing, blankConfig, saveLocal, schedulePersist, touchCfg, touchMonth, rt, cloudAdapter, setMeta } from './state.js';
 import { cloud, syncNow, signOutAndClear } from './cloud.js';
 import { authForm } from './auth.js';
-import { roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc, fijosQ, esDirecto } from './logic.js';
+import { quincenaActual, roMonth, getQ, qBounds, allocMonto, qBase, revertAlloc, fijosQ, esDirecto } from './logic.js';
 import { ui, openForm, closeSheet, submitSheet, askConfirm, toast, sheet, saveProy } from './ui.js';
 import { proyRefresh } from './views/proyecciones.js';
 import { faltaApartar } from './acciones.js';
@@ -31,7 +31,7 @@ async function resetAll(){
   if(cloudAdapter.active){try{await cloudAdapter.wipe()}catch(e){toast('No se pudo borrar en la nube')}}
 }
 export const ACT={
-  go(el){ui.route=el.dataset.r;if(ui.route==='resumen'){const d=new Date();ui.ym=ymOf(d);ui.q=d.getDate()<=15?1:2}render();window.scrollTo(0,0)},
+  go(el){ui.route=el.dataset.r;if(ui.route==='resumen'){const qa=quincenaActual();ui.ym=qa.ym;ui.q=qa.n}render();window.scrollTo(0,0)},
   'go-gastos'(){ui.gym=ui.ym;ui.route='gastos';render();window.scrollTo(0,0)},
   seed:seedDemo,
   blank(){ui.wstep='ingreso';render()},
@@ -77,7 +77,7 @@ export const ACT={
   'remind-later'(){setMeta({snoozeUntil:Date.now()+3*864e5});render()},
   'hide-demo'(){S.config.demo=false;touchCfg();render()},
   install(){const e=rt.installEvt;if(!e)return;e.prompt();Promise.resolve(e.userChoice).finally(()=>{rt.installEvt=null;render()})},
-  'q-hoy'(){const d=new Date();ui.ym=ymOf(d);ui.q=d.getDate()<=15?1:2;render();window.scrollTo(0,0)},
+  'q-hoy'(){const qa=quincenaActual();ui.ym=qa.ym;ui.q=qa.n;render();window.scrollTo(0,0)},
   'q-prev'(){prevQ();render()},'q-next'(){nextQ();render()},
   'g-prev'(){ui.gym=addMonths(ui.gym,-1);render()},'g-next'(){ui.gym=addMonths(ui.gym,1);render()},
   'r-prev'(){ui.rym=addMonths(ui.rym,-1);render()},'r-next'(){ui.rym=addMonths(ui.rym,1);render()},
@@ -91,11 +91,11 @@ export const ACT={
     S.config.metas.push({id:uid8(),nombre:(p.nombre||'').trim()||'Mi compra',objetivo:precio,ahorrado:round2(num(p.ahorrado)),fecha:f,desglose:[]});
     touchCfg();toast('Meta creada. La puedes ver en Metas.');ui.route='metas';render();window.scrollTo(0,0);
   },
-  'plan-next'(){const d=new Date();ui.ym=ymOf(d);ui.q=d.getDate()<=15?1:2;nextQ();ui.route='quincena';render();window.scrollTo(0,0)},
+  'plan-next'(){const qa=quincenaActual();ui.ym=qa.ym;ui.q=qa.n;nextQ();ui.route='quincena';render();window.scrollTo(0,0)},
   'apartar-tarjeta'(el){
     const c=S.config.tarjetas.find(x=>x.id===el.dataset.id);if(!c)return;
     const falta=faltaApartar(c);if(!(falta>0)){toast('Ya tienes apartado lo necesario');return}
-    const d=new Date();ui.ym=ymOf(d);ui.q=d.getDate()<=15?1:2;
+    const qa=quincenaActual();ui.ym=qa.ym;ui.q=qa.n;
     const q=getQ(ui.ym,ui.q),a=q.allocs.find(x=>x.kind==='tarjeta'&&x.ref===c.id&&!x.done&&!(+x.pct>0));
     if(a)a.monto=round2((+a.monto||0)+falta);else q.allocs.push({id:uid8(),nombre:'Pagar '+c.nombre,kind:'tarjeta',ref:c.id,cat:'',monto:falta,pct:0,done:false});
     touchMonth(ui.ym);render();toast('Listo: apartaste '+money(falta)+' para '+c.nombre);
@@ -159,6 +159,9 @@ export const ACT={
 };
 export const CHG={
   'q-ingreso'(el){const q=getQ(ui.ym,ui.q);q.ingreso=num(el.value);touchMonth(ui.ym);render()},
+  'q-modo'(el){S.config.porPago=el.value==='pago';if(S.config.porPago&&!(+S.config.diaPago>0))S.config.diaPago=15;touchCfg();const qa=quincenaActual();ui.ym=qa.ym;ui.q=qa.n;render();toast(S.config.porPago?'Listo: la quincena cambia el día que te pagan':'Listo: quincenas del 1 al 15 y del 16 al fin de mes')},
+  'q-dia1'(el){const v=Math.round(num(el.value));if(v<2||v>27||(+S.config.diaPago2>0&&v>=+S.config.diaPago2-1)){toast('El primer pago debe ser entre el día 2 y el 27, y antes del segundo');render();return}S.config.diaPago=v;touchCfg();const qa=quincenaActual();ui.ym=qa.ym;ui.q=qa.n;render()},
+  'q-dia2'(el){const v=Math.round(num(el.value));if(v!==0&&(v>31||v<=(+S.config.diaPago||15)+1)){toast('El segundo pago debe ser un día después del primero, o 0 para el último día del mes');render();return}S.config.diaPago2=v;touchCfg();const qa=quincenaActual();ui.ym=qa.ym;ui.q=qa.n;render()},
   ingresoQ(el){S.config.ingresoQ=num(el.value);touchCfg();toast('Ingreso guardado')},
   tema(el){try{localStorage.setItem('tema-fin',el.value)}catch(e){}applyTheme()}
 };

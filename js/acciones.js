@@ -1,7 +1,7 @@
 // "Qué hacer ahora": lo más importante de esta quincena, de lo más urgente a lo menos.
 import { money, ymOf, fdate, inDays, round2, sum } from './util.js';
 import { S } from './state.js';
-import { qSummary, qBounds, cardInfo, msiInfo, fijoMonto, objetivoPago, planHastaLimite } from './logic.js';
+import { quincenaActual, diasRestantes, qSummary, qBounds, cardInfo, msiInfo, fijoMonto, objetivoPago, planHastaLimite } from './logic.js';
 
 // Cuánto falta apartar para pagar una tarjeta antes de su fecha límite (con lo apartado en las quincenas que llegan a tiempo)
 export function faltaApartar(c) {
@@ -10,8 +10,8 @@ export function faltaApartar(c) {
 }
 
 export function accionesAhora() {
-  const now = new Date(), ym = ymOf(now), n = now.getDate() <= 15 ? 1 : 2, s = qSummary(ym, n), b = qBounds(ym, n);
-  const endDay = +b[1].slice(8), left = endDay - now.getDate() + 1, out = [];
+  const qa = quincenaActual(), ym = qa.ym, n = qa.n, s = qSummary(ym, n), b = qBounds(ym, n);
+  const endDay = +b[1].slice(8), left = diasRestantes(b), out = [];
   const add = (tono, titulo, detalle, act, r, label, id) => out.push({ tono: tono, titulo: titulo, detalle: detalle, act: act, r: r, label: label, id: id });
 
   // 1) Tarjetas: lo que hay que pagar antes de su fecha límite (o ir apartando para el siguiente pago)

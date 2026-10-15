@@ -1,16 +1,16 @@
 // Pantalla: resumen (tablero principal).
-import { esc, money, ymOf, MESES, parseYM, inDays, fdate, sum, ic, privacy } from '../util.js';
+import { esc, money, ymd, MESES, parseYM, inDays, fdate, sum, ic, privacy } from '../util.js';
 import { S } from '../state.js';
-import { qBounds, qSummary, cardInfo, fijoMonto, metaObj, KIND, msiInfo, msiMes, cardTotal, valeSaldo, valeProx } from '../logic.js';
+import { quincenaActual, qBounds, qSummary, cardInfo, fijoMonto, metaObj, KIND, msiInfo, msiMes, cardTotal, valeSaldo, valeProx } from '../logic.js';
 import { chipK } from '../components.js';
 import { donut, legend, ring, paceChart } from '../charts.js';
 import { accionesAhora } from '../acciones.js';
 
 export function vResumen() {
-  const now = new Date(), ym = ymOf(now), n = now.getDate() <= 15 ? 1 : 2;
+  const now = new Date(), qa = quincenaActual(), ym = qa.ym, n = qa.n;
   const s = qSummary(ym, n), q = s.q, p = parseYM(ym), b = qBounds(ym, n);
-  const startDay = +b[0].slice(8), endDay = +b[1].slice(8), today = now.getDate();
-  const total = endDay - startDay + 1, dayIdx = today - startDay + 1, left = endDay - today + 1;
+  const dA = new Date(b[0] + 'T00:00:00'), dB = new Date(b[1] + 'T00:00:00'), dT = new Date(ymd(now) + 'T00:00:00');
+  const total = Math.round((dB - dA) / 864e5) + 1, dayIdx = Math.round((dT - dA) / 864e5) + 1, left = total - dayIdx + 1;
   const plan = id => (s.by[id] && s.by[id].plan) || 0;
 
   // Gasto del día a día (efectivo y débito) frente a lo que tienes para gastar
@@ -18,10 +18,11 @@ export function vResumen() {
   const spent = sum(cash, t => t.monto);
   const topes = s.allocs.filter(a => a.kind === 'gasto');
   const budget = sum(topes, a => plan(a.id)) + Math.max(0, s.ingreso - s.asignado);
-  const cum = []; let acc = 0;
-  for (let d = startDay; d <= endDay; d++) {
-    if (d > today) { cum.push(null); continue; }
-    acc += sum(cash.filter(t => +t.f.slice(8) === d), t => t.monto); cum.push(acc);
+  const cum = [], dias = []; let acc = 0;
+  for (let i = 0; i < total; i++) {
+    const dd = new Date(dA); dd.setDate(dd.getDate() + i); const f = ymd(dd); dias.push(dd.getDate());
+    if (i + 1 > dayIdx) { cum.push(null); continue; }
+    acc += sum(cash.filter(t => t.f === f), t => t.monto); cum.push(acc);
   }
 
   // Estado en lenguaje simple
@@ -74,7 +75,7 @@ export function vResumen() {
     const proj = dayIdx > 0 ? spent / dayIdx * total : 0;
     ritmo += '<p class="hint" style="margin-bottom:6px">' + (spent === 0 ? 'Aún no registras gastos en efectivo o débito esta quincena.'
       : 'Llevas <b>' + money(spent) + '</b> de <b>' + money(budget) + '</b> que tenías para gastar. ' + (proj > budget ? 'A este paso te pasarías unos ' + money(Math.round(proj - budget)) + '.' : 'A este paso llegarías al final con unos ' + money(Math.round(budget - proj)) + ' de sobra.')) + '</p>'
-      + paceChart({ startDay: startDay, cum: cum, budget: budget, todayIdx: Math.min(dayIdx - 1, total - 1) })
+      + paceChart({ dias: dias, cum: cum, budget: budget, todayIdx: Math.min(dayIdx - 1, total - 1) })
       + '<div class="legend"><span><i class="ln"></i>Lo que llevas</span><span><i class="ln dash"></i>Ritmo ideal</span></div>'
       + '<p class="hint" style="margin:8px 0 0">Cuenta efectivo y débito frente a tus topes más lo libre. Lo que pagas con tarjeta se cuenta cuando pagas la tarjeta.</p>';
   }

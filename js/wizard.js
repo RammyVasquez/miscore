@@ -2,13 +2,14 @@
 // crea toda la configuración de una vez.
 import { uid8, round2, num, ymOf, sum, norm } from './util.js';
 import { S, blankConfig, touchCfg } from './state.js';
+import { quincenaActual } from './logic.js';
 import { ui } from './ui.js';
 
 const KEY = 'mf-wiz';
 const COLORES = ['#1D4ED8', '#E0463A', '#13795B', '#7C3AED', '#D97706', '#334155'];
 export const PASOS = 5;
 
-export const defaultWiz = () => ({ step: 1, ingreso: '', bono: '', bonoQ: '2', tarjetas: [], fijos: [], fc: {}, fx: {}, diezmo: true, diezmoPct: '10', pago: {}, ahorro: '', topes: { despensa: '', salidas: '' } });
+export const defaultWiz = () => ({ step: 1, modoQ: 'cal', ingreso: '', bono: '', bonoQ: '2', tarjetas: [], fijos: [], fc: {}, fx: {}, diezmo: true, diezmoPct: '10', pago: {}, ahorro: '', topes: { despensa: '', salidas: '' } });
 export function wiz() {
   if (!ui.wiz) { let d = null; try { d = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {} ui.wiz = Object.assign(defaultWiz(), d || {}); }
   return ui.wiz;
@@ -71,7 +72,7 @@ const catDe = n => { const s = norm(n); return (s.indexOf('renta') >= 0 || s.ind
 // Crea toda la configuración con lo que contestaste
 export function finish() {
   const w = wiz(), c = blankConfig(), hoy = ymOf(new Date());
-  c.onboarded = true; c.ingresoQ = round2(num(w.ingreso));
+  c.onboarded = true; c.ingresoQ = round2(num(w.ingreso)); c.porPago = w.modoQ === 'pago'; c.diaPago = 15; c.diaPago2 = 0;
   c.tarjetas = w.tarjetas.map(t => ({ id: t.id, nombre: t.nombre, saldo: t.saldo, total: t.total || 0, corte: t.corte, limite: t.limite, color: t.color }));
   c.fijos = w.fijos.map(x => ({ id: x.id, nombre: x.nombre, monto: x.monto, tipo: 'fijo', medio: x.medio, cat: catDe(x.nombre), variable: false, porQ: x.cada === 'q', cada: 1, q: x.cada === 'q' ? 0 : (+x.q || 0), reparto: x.reparto === 'mitad' ? 'mitad' : 'junto', auto: true, desde: '', vals: {} }));
   if (num(w.bono) > 0) c.ingresosRec = [{ id: uid8(), nombre: 'Bono', monto: round2(num(w.bono)), cada: '1', q: +w.bonoQ || 2, desde: hoy, hasta: '', vals: {} }];
@@ -85,5 +86,5 @@ export function finish() {
   c.plantilla = pl;
   S.config = c; S.months = {};
   clearWiz(); touchCfg();
-  const d = new Date(); ui.wstep = 'ask'; ui.route = 'resumen'; ui.ym = ymOf(d); ui.q = d.getDate() <= 15 ? 1 : 2;
+  ui.wstep = 'ask'; ui.route = 'resumen'; const qa = quincenaActual(); ui.ym = qa.ym; ui.q = qa.n;
 }

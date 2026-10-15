@@ -1,7 +1,7 @@
 // Formularios de alta y edición (apartados, movimientos, tarjetas, metas, fijos).
 import { uid8, round2, num, ymd, ymOf, addMonths, MESES, parseYM, qLabel } from './util.js';
 import { S, touchCfg, touchMonth } from './state.js';
-import { getMonth, roMonth, getQ, txEffect, revertAlloc, msiInfo, valeSaldo } from './logic.js';
+import { getMonth, roMonth, getQ, txEffect, revertAlloc, msiInfo, valeSaldo, quincenaDeFecha } from './logic.js';
 import { ui, drawSheet, openForm, closeSheet, askConfirm, toast, sheet, sheetNote } from './ui.js';
 import { render } from './render.js';
 
@@ -41,7 +41,7 @@ export function txForm(id,ymHint,preset){
       {k:'tipo',label:'Tipo',type:'select',re:true,opts:[['gasto','Gasto'],['ingreso','Ingreso extra']]},
       {k:'monto',label:'Monto',type:'number',req:true},
       {k:'repite',label:'¿Se repite?',type:'select',re:true,opts:[['0','No, solo esta vez'],['1','Sí, cada mes (un bono, por ejemplo)'],['q','Sí, cada quincena']],when:v=>v.tipo==='ingreso'&&!old},
-      {k:'qrec',label:'¿En qué quincena lo recibes?',type:'select',opts:[['1','1ª quincena (días 1 al 15)'],['2','2ª quincena (días 16 al fin de mes)']],hint:'Si te lo pagan el día 15, normalmente sirve para la 2ª quincena.',when:v=>v.tipo==='ingreso'&&!old&&v.repite==='1'},
+      {k:'qrec',label:'¿En qué quincena lo recibes?',type:'select',opts:[['1','1ª quincena (días 1 al 15)'],['2','2ª quincena (días 16 al fin de mes)']],hint:'Elige la quincena en que cae la fecha en que te lo pagan. Por ejemplo, si te llega el 6 o el 7, es la 1ª quincena.',when:v=>v.tipo==='ingreso'&&!old&&v.repite==='1'},
       {k:'cat',label:'Categoría',type:'select',opts:catOpts,when:v=>v.tipo==='gasto'},
       {k:'medio',label:'Se pagó con',type:'select',opts:medioOpts,when:v=>v.tipo==='gasto'},
       {k:'nota',label:'Nota (opcional)'},
@@ -57,7 +57,7 @@ export function txForm(id,ymHint,preset){
       if(old){const om=getMonth(ymHint);om.tx=om.tx.filter(t=>t.id!==old.id);txEffect(old,-1);touchMonth(ymHint)}
       const t={id:old?old.id:uid8(),tipo:o.tipo,monto:round2(o.monto),cat:o.tipo==='ingreso'?'Ingreso extra':o.cat,nota:o.nota.trim(),f:o.f,medio:o.tipo==='ingreso'?'efectivo':o.medio,ts:old?old.ts:Date.now()};
       const ym=t.f.slice(0,7);getMonth(ym).tx.push(t);txEffect(t,1);touchMonth(ym);render();
-      const nq=+t.f.slice(8,10)<=15?1:2,donde=qLabel(ym,nq),otra=ui.route==='quincena'&&(ym!==ui.ym||nq!==ui.q);
+      const nq=quincenaDeFecha(t.f),donde=qLabel(nq.ym,nq.n),otra=ui.route==='quincena'&&(nq.ym!==ui.ym||nq.n!==ui.q);
       toast((old?'Movimiento actualizado en la ':'Guardado en la ')+donde+(otra?'. No es la que estás viendo':''));
     },
     onDelete:old?()=>{const om=getMonth(ymHint);om.tx=om.tx.filter(t=>t.id!==old.id);txEffect(old,-1);touchMonth(ymHint);closeSheet();render()}:null
@@ -189,7 +189,7 @@ export function recForm(id) {
       { k: 'nombre', label: 'Nombre', req: true },
       { k: 'monto', label: 'Monto', type: 'number', req: true },
       { k: 'cada', label: '¿Cada cuánto llega?', type: 'select', re: true, opts: [['1', 'Cada mes'], ['q', 'Cada quincena']] },
-      { k: 'q', label: '¿En qué quincena lo recibes?', type: 'select', opts: [['1', '1ª quincena (días 1 al 15)'], ['2', '2ª quincena (días 16 al fin de mes)']], hint: 'Si te lo pagan el día 15, normalmente sirve para la 2ª quincena.', when: v => v.cada === '1' },
+      { k: 'q', label: '¿En qué quincena lo recibes?', type: 'select', opts: [['1', '1ª quincena (días 1 al 15)'], ['2', '2ª quincena (días 16 al fin de mes)']], hint: 'Elige la quincena en que cae la fecha en que te lo pagan. Por ejemplo, si te llega el 6 o el 7, es la 1ª quincena.', when: v => v.cada === '1' },
       { k: 'montoMes', label: 'Monto de ' + mes + ' (opcional)', type: 'number', raw: true, hint: 'Déjalo vacío para usar el monto de siempre. Escribe 0 si este mes no llega.', when: v => v.cada === '1' },
       { k: 'hasta', label: 'Hasta qué mes (opcional)', type: 'month', hint: 'Déjalo vacío si no tiene fin.' }
     ],

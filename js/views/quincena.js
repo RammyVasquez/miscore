@@ -1,17 +1,19 @@
 // Pantalla: quincena.
-import { esc, money, MESES, parseYM, ic, privacy, sum, ymOf, qLabel } from '../util.js';
+import { esc, money, MESES, MES3, parseYM, ic, privacy, sum, qLabel } from '../util.js';
 import { S } from '../state.js';
-import { qBounds, allocMonto, qSummary, msiMes, fijosQ, esDirecto, cardName, fijoMonto } from '../logic.js';
+import { quincenaActual, qBounds, allocMonto, qSummary, msiMes, fijosQ, esDirecto, cardName, fijoMonto } from '../logic.js';
 import { chipK, txRow } from '../components.js';
 import { ui } from '../ui.js';
 
+// "del 1 al 14" o, si cruza de mes, "del 31 oct al 14 nov"
+const rango=(a,b)=>a.slice(0,7)===b.slice(0,7)?'del '+(+a.slice(8))+' al '+(+b.slice(8)):'del '+(+a.slice(8))+' '+MES3[+a.slice(5,7)-1]+' al '+(+b.slice(8))+' '+MES3[+b.slice(5,7)-1];
 export function vQuincena(){
   const ym=ui.ym,n=ui.q,s=qSummary(ym,n),q=s.q,p=parseYM(ym),b=qBounds(ym,n);
-  let h='<div class="qnav"><button class="icon" data-act="q-prev" aria-label="Quincena anterior">‹</button><div><b>'+(n===1?'1ª':'2ª')+' quincena de '+MESES[p.m-1]+'</b><span class="mut">'+p.y+' · del '+(+b[0].slice(8))+' al '+(+b[1].slice(8))+'</span></div><button class="icon" data-act="q-next" aria-label="Quincena siguiente">›</button></div>';
-  const hoy=new Date(),cym=ymOf(hoy),cn=hoy.getDate()<=15?1:2;
+  let h='<div class="qnav"><button class="icon" data-act="q-prev" aria-label="Quincena anterior">‹</button><div><b>'+(n===1?'1ª':'2ª')+' quincena de '+MESES[p.m-1]+'</b><span class="mut">'+p.y+' · '+rango(b[0],b[1])+'</span></div><button class="icon" data-act="q-next" aria-label="Quincena siguiente">›</button></div>';
+  const qa=quincenaActual(),cym=qa.ym,cn=qa.n;
   if(ym!==cym||n!==cn){
     const pasada=ym<cym||(ym===cym&&n<cn);
-    h+='<div class="demo qwarn"><div><b>Estás viendo la '+qLabel(ym,n)+'</b>, no la actual (la '+qLabel(cym,cn)+'). '+(pasada?'Es una quincena que ya pasó. ':'Todavía no llega. ')+'Cada gasto cuenta en la quincena que le toca por su fecha.</div><div class="btns"><button class="btn sm" data-act="q-hoy">Ir a la actual</button></div></div>';
+    h+='<div class="demo qwarn"><div><b>Estás viendo la '+qLabel(ym,n)+'</b>, no la actual (la '+qLabel(cym,cn)+'). '+(pasada?'Es una quincena que ya pasó. ':'Empieza el '+(+b[0].slice(8))+' de '+MESES[+b[0].slice(5,7)-1]+'; ya puedes planearla y marcar sus apartados. ')+'Cada gasto cuenta en la quincena que le toca por su fecha.</div><div class="btns"><button class="btn sm" data-act="q-hoy">Ir a la actual</button></div></div>';
   }
   h+='<label class="inc"><span>Sueldo de la quincena</span><input type="'+(privacy.hidden?'password':'number')+'" inputmode="decimal" step="any" autocomplete="off" value="'+esc(q.ingreso||'')+'" placeholder="0" data-chg="q-ingreso"></label>';
   h+='<section class="hero'+(s.libre<0?' neg':'')+'" style="padding:16px 20px"><div class="lbl">Libre</div><div class="big" style="font-size:clamp(40px,11vw,60px)">'+money(s.libre)+'</div>';

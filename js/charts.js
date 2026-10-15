@@ -68,7 +68,7 @@ export function paceChart(o) {
     s += '<circle cx="' + lastX + '" cy="' + lastY + '" r="5" class="pc-dot' + (over ? ' over' : '') + '"/>';
   }
   [0, Math.floor((N - 1) / 2), N - 1].forEach((i, k) => {
-    s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + (k === 0 ? 'start' : k === 2 ? 'end' : 'middle') + '" class="ax-t">' + (o.startDay + i) + '</text>';
+    s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + (k === 0 ? 'start' : k === 2 ? 'end' : 'middle') + '" class="ax-t">' + (o.dias ? o.dias[i] : o.startDay + i) + '</text>';
   });
   return s + '</svg>';
 }

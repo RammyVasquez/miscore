@@ -9,8 +9,34 @@ export function getQ(ym,n){
   if(!mo[k]){mo[k]={ingreso:S.config.ingresoQ||0,allocs:S.config.plantilla.map(p=>Object.assign({},p,{id:uid8(),done:false}))};touchMonth(ym)}
   return mo[k];
 }
-export const qBounds=(ym,n)=>{const p=parseYM(ym);return n===1?[ym+'-01',ym+'-15']:[ym+'-16',ym+'-'+pad(lastDay(p.y,p.m))]};
-export const qTx=(ym,n)=>{const b=qBounds(ym,n);return (roMonth(ym).tx||[]).filter(t=>t.f>=b[0]&&t.f<=b[1])};
+// ---- Cuándo empieza cada quincena ----
+// Por defecto: la 1ª va del 1 al 15 y la 2ª del 16 al fin de mes.
+// Si eliges "cambian el día que me pagan": la 2ª empieza el día de tu primer pago (por ejemplo el 15) y la
+// 1ª del mes siguiente empieza el día de tu segundo pago (por ejemplo el último día del mes). Así el dinero
+// que te pagan hoy ya cuenta en la quincena nueva. Una quincena puede cruzar de un mes a otro.
+export const diaQ2=()=>S.config.porPago?Math.min(27,Math.max(2,Math.round(+S.config.diaPago)||15)):16;
+export const diaFinQ=(y,m)=>{const last=lastDay(y,m),d2=Math.round(+S.config.diaPago2)||0;return d2>0?Math.min(d2,last):last};
+export function qBounds(ym,n){
+  const p=parseYM(ym);
+  if(!S.config.porPago)return n===1?[ym+'-01',ym+'-15']:[ym+'-16',ym+'-'+pad(lastDay(p.y,p.m))];
+  const d1=diaQ2(),fin=diaFinQ(p.y,p.m);
+  if(n===2)return [ym+'-'+pad(d1),ym+'-'+pad(fin-1)];
+  const prev=addMonths(ym,-1),pp=parseYM(prev);
+  return [prev+'-'+pad(diaFinQ(pp.y,pp.m)),ym+'-'+pad(d1-1)];
+}
+// A qué quincena pertenece una fecha 'AAAA-MM-DD'
+export function quincenaDeFecha(f){
+  const ym=f.slice(0,7),d=+f.slice(8,10);
+  if(!S.config.porPago)return {ym:ym,n:d<16?1:2};
+  const p=parseYM(ym);
+  if(d>=diaFinQ(p.y,p.m))return {ym:addMonths(ym,1),n:1};
+  return {ym:ym,n:d>=diaQ2()?2:1};
+}
+export const quincenaActual=()=>quincenaDeFecha(ymd(new Date()));
+// Días que le quedan a una quincena, contando hoy
+export const diasRestantes=b=>Math.round((new Date(b[1]+'T00:00:00')-new Date(ymd(new Date())+'T00:00:00'))/864e5)+1;
+// Los movimientos se guardan por mes calendario; una quincena que cruza de mes junta los dos
+export const qTx=(ym,n)=>{const b=qBounds(ym,n),ms=b[0].slice(0,7)===b[1].slice(0,7)?[b[0].slice(0,7)]:[b[0].slice(0,7),b[1].slice(0,7)];return ms.reduce((a,m)=>a.concat(roMonth(m).tx||[]),[]).filter(t=>t.f>=b[0]&&t.f<=b[1])};
 export const allocMonto=(a,base)=>(+a.pct>0)?round2((+base||0)*a.pct/100):(+a.monto||0);
 export const qBase=(ym,n)=>{const q=roMonth(ym)['q'+n];if(!q)return 0;return (+q.ingreso||0)+sum(qTx(ym,n).filter(t=>t.tipo==='ingreso'),t=>t.monto)+sum(recsQ(ym,n),x=>x.m)};
 export function qSummary(ym,n){
